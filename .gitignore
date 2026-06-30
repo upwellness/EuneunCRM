@@ -1,0 +1,17 @@
+# ── ข้อมูลลูกค้า / PII — ห้าม publish (เก็บใน Supabase + เครื่อง local เท่านั้น) ──
+seed-embed.js
+data/
+build_seed.py
+CRM-SPEC.md
+CRM-SPEC.html
+toni-crm-*.json
+*.backup.json
+line group/
+
+# ── tooling / system ──
+.DS_Store
+.vercel
+node_modules/
+.env
+.env.*
+.claude/

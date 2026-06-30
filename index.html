@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="auto">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Toni CRM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --gold:#C8A84B; --gold-strong:#9A7A2B; --gold-soft:#F5D67A;
+  --teal:#0D9488; --teal-soft:#2DD4BF; --violet:#6D4FE0; --violet-soft:#A78BFA;
+  --bg:#FAF7EF; --bg2:#F2ECDD; --surface:#FFFFFF; --elevated:#FFFDF8;
+  --text:#1A1A2A; --muted:#5C5C6E; --faint:#8A8A99;
+  --border:rgba(26,26,42,.10); --border-strong:rgba(26,26,42,.16);
+  --glass:rgba(255,255,255,.72); --shadow:0 8px 30px rgba(26,26,42,.08);
+  --aurora:linear-gradient(135deg,#E6B84B 0%,#14B8A6 50%,#7C5CFC 100%);
+  --ok:#16A34A; --warn:#D97706; --bad:#DC2626; --fs:16px;
+}
+html.dark{
+  --gold:#E6B84B; --gold-strong:#F5D67A; --gold-soft:#9A7A2B;
+  --teal:#2DD4BF; --teal-soft:#14B8A6; --violet:#A78BFA; --violet-soft:#7C5CFC;
+  --bg:#0D0D14; --bg2:#08080F; --surface:#12121E; --elevated:#1A1A2A;
+  --text:#E5E7EB; --muted:#A8A8BC; --faint:#7A7A90;
+  --border:rgba(255,255,255,.10); --border-strong:rgba(255,255,255,.16);
+  --glass:rgba(18,18,30,.72); --shadow:0 10px 36px rgba(0,0,0,.45);
+  --ok:#4ADE80; --warn:#F0CC72; --bad:#F87171;
+}
+*{box-sizing:border-box}
+html{font-size:var(--fs);-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;color:var(--text);
+  font-family:'IBM Plex Sans Thai','Inter',system-ui,sans-serif;line-height:1.55;
+  background:
+    radial-gradient(60vw 50vw at 100% -10%, color-mix(in srgb,var(--gold) 12%,transparent),transparent 60%),
+    radial-gradient(55vw 50vw at -10% 110%, color-mix(in srgb,var(--violet) 11%,transparent),transparent 60%),
+    var(--bg);}
+h1,h2,h3{font-family:'Space Grotesk','IBM Plex Sans Thai',sans-serif;margin:0;line-height:1.25}
+button{font:inherit;cursor:pointer}
+.mono{font-family:'JetBrains Mono',monospace}
+.grad{background:var(--aurora);-webkit-background-clip:text;background-clip:text;color:transparent}
+.muted{color:var(--muted)} .faint{color:var(--faint)}
+
+/* topbar */
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px clamp(12px,3vw,24px);background:var(--glass);backdrop-filter:blur(18px) saturate(1.3);
+  -webkit-backdrop-filter:blur(18px) saturate(1.3);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:9px;font-family:'Space Grotesk',sans-serif;font-weight:700}
+.dot{width:26px;height:26px;border-radius:8px;background:var(--aurora);box-shadow:0 2px 10px color-mix(in srgb,var(--gold) 50%,transparent)}
+.sp{flex:1}
+.seg{display:inline-flex;background:color-mix(in srgb,var(--text) 6%,transparent);border:1px solid var(--border);border-radius:999px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;color:var(--muted);font-size:.8rem;font-weight:600;padding:5px 9px;border-radius:999px;line-height:1;transition:.16s}
+.seg button.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.iconbtn{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:10px;
+  padding:6px 11px;font-size:.82rem;font-weight:600;display:inline-flex;align-items:center;gap:5px}
+.iconbtn:hover{border-color:var(--gold)}
+
+/* tabs */
+.tabs{position:sticky;top:50px;z-index:30;display:flex;gap:4px;overflow-x:auto;padding:8px clamp(12px,3vw,24px);
+  background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.tab{white-space:nowrap;border:0;background:transparent;color:var(--muted);font-weight:600;font-size:.92rem;
+  padding:7px 14px;border-radius:10px}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:var(--shadow)}
+.wrap{max-width:1080px;margin:0 auto;padding:clamp(14px,3vw,26px) clamp(12px,3vw,24px) 110px}
+
+/* kpi */
+.grid{display:grid;gap:12px}
+.kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:15px 17px;box-shadow:var(--shadow)}
+.kpi .n{font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:700;line-height:1}
+.kpi .k{font-size:.82rem;color:var(--muted);margin-top:5px}
+.kpi.bad{border-color:color-mix(in srgb,var(--bad) 45%,transparent)} .kpi.bad .n{color:var(--bad)}
+.kpi.gold .n{color:var(--gold-strong)} .kpi.teal .n{color:var(--teal)} .kpi.ok .n{color:var(--ok)}
+.cols2{grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow)}
+.panel h3{font-size:1rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.sectlabel{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-strong);font-weight:700;margin-bottom:6px}
+
+/* status pills */
+.st{display:inline-block;font-size:.72rem;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.st-new{background:color-mix(in srgb,var(--faint) 18%,transparent);color:var(--muted);border:1px solid var(--border)}
+.st-active{background:color-mix(in srgb,var(--teal) 16%,transparent);color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 40%,transparent)}
+.st-following{background:color-mix(in srgb,var(--gold) 18%,transparent);color:var(--gold-strong);border:1px solid color-mix(in srgb,var(--gold) 45%,transparent)}
+.st-nurture{background:color-mix(in srgb,var(--violet) 16%,transparent);color:var(--violet);border:1px solid color-mix(in srgb,var(--violet) 40%,transparent)}
+.st-stale{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}
+.st-won{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 40%,transparent)}
+.st-lost{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--faint);border:1px solid var(--border)}
+.biz{font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:6px;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--muted)}
+
+/* customer row/card */
+.clist{display:grid;gap:10px;margin-top:12px}
+.crow{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;
+  box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%}
+.crow:hover{border-color:var(--gold)}
+.crow .nm{font-weight:600;font-size:.98rem}
+.crow .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.crow .right{margin-left:auto;text-align:right;white-space:nowrap;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.daysflag{font-size:.74rem;font-weight:600}
+.flag-bad{color:var(--bad)} .flag-warn{color:var(--warn)} .flag-faint{color:var(--faint)}
+.na{font-size:.8rem;color:var(--muted);margin-top:6px}
+.na b{color:var(--text)}
+
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center}
+.inp{width:100%;background:var(--elevated);border:1px solid var(--border);border-radius:10px;color:var(--text);
+  padding:9px 12px;font:inherit;font-size:.92rem}
+.inp:focus{outline:0;border-color:var(--gold)}
+select.inp{width:auto}
+.fchip{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:999px;
+  padding:5px 12px;font-size:.82rem;font-weight:600}
+.fchip.on{background:color-mix(in srgb,var(--gold) 16%,transparent);color:var(--gold-strong);border-color:color-mix(in srgb,var(--gold) 45%,transparent)}
+
+/* modal / sheet */
+.ovl{position:fixed;inset:0;z-index:60;background:rgba(8,8,15,.5);backdrop-filter:blur(3px);
+  display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:680px){.ovl{align-items:center}}
+.sheet{background:var(--surface);border:1px solid var(--border-strong);width:100%;max-width:560px;max-height:92vh;overflow:auto;
+  border-radius:20px 20px 0 0;box-shadow:0 -10px 50px rgba(0,0,0,.3)}
+@media(min-width:680px){.sheet{border-radius:20px}}
+.sheet .hd{position:sticky;top:0;background:var(--surface);padding:16px 18px 12px;border-bottom:1px solid var(--border);z-index:2}
+.sheet .bd{padding:16px 18px 24px}
+.x{border:0;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text);border-radius:9px;width:32px;height:32px;font-size:1.1rem}
+.lbl{font-size:.78rem;font-weight:600;color:var(--muted);margin:12px 0 5px;display:block}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:0;border-radius:11px;padding:10px 16px;font-weight:700;font-size:.9rem}
+.btn-gold{background:var(--aurora);color:#1a1206;box-shadow:0 4px 16px color-mix(in srgb,var(--gold) 40%,transparent)}
+html.dark .btn-gold{color:#0c0c12}
+.btn-ghost{background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--text)}
+.btn-bad{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}
+.note-item{border-left:2px solid var(--border-strong);padding:6px 0 6px 12px;margin:8px 0}
+.note-item .when{font-size:.74rem;color:var(--faint)}
+.empty{text-align:center;color:var(--faint);padding:26px 10px;font-size:.92rem}
+
+/* bars */
+.bar{display:flex;align-items:center;gap:8px;margin:6px 0;font-size:.82rem}
+.bar .track{flex:1;height:8px;border-radius:99px;background:color-mix(in srgb,var(--text) 8%,transparent);overflow:hidden}
+.bar .fill{height:100%;border-radius:99px}
+.bar .v{width:34px;text-align:right;color:var(--muted);font-weight:600}
+
+/* fab */
+.fab{position:fixed;right:18px;bottom:22px;z-index:35;border:0;border-radius:16px;padding:13px 18px;font-weight:700;
+  background:var(--aurora);color:#1a1206;box-shadow:0 8px 26px color-mix(in srgb,var(--gold) 45%,transparent)}
+html.dark .fab{color:#0c0c12}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;background:var(--text);color:var(--bg);
+  padding:10px 18px;border-radius:12px;font-size:.88rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+/* gate / sync */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.gatecard{background:var(--surface);border:1px solid var(--border-strong);border-radius:22px;padding:32px 26px;width:100%;max-width:340px;box-shadow:var(--shadow)}
+.synced{font-size:.72rem;font-weight:600;color:var(--muted);padding:4px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
+.synced.off{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent)}
+.synced.err{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 40%,transparent)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="seed-embed.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel-src" id="appsrc">
+const {useState,useEffect,useMemo,useRef} = React;
+const LS='crm_data_v1', PINK='crm_pin';
+
+/* ---------- Supabase cloud (passcode-gated RPCs · anon อ่าน table ตรงไม่ได้) ---------- */
+const SB_URL='https://xbrpbamohxtspjbkavuv.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhicnBiYW1vaHh0c3BqYmthdnV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDQ4NzQsImV4cCI6MjA4OTE4MDg3NH0.j0ftHZW2DnfwhJJpooA8Hr63fSSzCQBxy3Rh41HAqwk';
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
+async function cloudList(pin){const {data,error}=await sb.rpc('crm_list',{p:pin});if(error)throw new Error(error.message||'err');return (data||[]).map((r,i)=>normalize(r.data,i));}
+async function cloudUpsert(pin,c){const {error}=await sb.rpc('crm_upsert',{p:pin,cid:c.id,d:c});if(error)throw new Error(error.message||'err');}
+async function cloudDelete(pin,id){const {error}=await sb.rpc('crm_delete',{p:pin,cid:id});if(error)throw new Error(error.message||'err');}
+async function cloudSeed(pin,rows){const {error}=await sb.rpc('crm_seed_if_empty',{p:pin,rows});if(error)throw new Error(error.message||'err');}
+async function cloudReplace(pin,rows){const {error}=await sb.rpc('crm_replace_all',{p:pin,rows});if(error)throw new Error(error.message||'err');}
+
+/* ---------- date helpers (local) ---------- */
+const pad=n=>String(n).padStart(2,'0');
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function addDaysISO(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function daysBetween(aISO,bISO){return Math.round((new Date(bISO+'T00:00:00')-new Date(aISO+'T00:00:00'))/86400000);}
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thDate(iso){if(!iso)return '';const d=new Date(iso+'T00:00:00');return d.getDate()+' '+TH_MON[d.getMonth()]+' '+(d.getFullYear()+543-2500);}
+
+/* ---------- config ---------- */
+const STATUSES=[
+ {id:'new',label:'ยังไม่จัด',cls:'st-new',bucket:'seed'},
+ {id:'active',label:'กำลังคุย',cls:'st-active',bucket:'active'},
+ {id:'following',label:'กำลังตาม',cls:'st-following',bucket:'active'},
+ {id:'nurture',label:'ดูแลยาว',cls:'st-nurture',bucket:'active'},
+ {id:'stale',label:'ค้าง/หาย',cls:'st-stale',bucket:'alert'},
+ {id:'won',label:'ปิดได้',cls:'st-won',bucket:'closed'},
+ {id:'lost',label:'พัก/ปิด',cls:'st-lost',bucket:'closed'},
+];
+const stMeta=id=>STATUSES.find(s=>s.id===id)||STATUSES[0];
+const CHANNELS=['LINE','โทร','เจอตัว','อื่นๆ'];
+const THRESH={default:14,nurture:30};
+
+/* ---------- data ---------- */
+function normalize(c,i){return {
+  id:c.id||('c'+i+'-'+Math.random().toString(36).slice(2,6)),
+  name:c.name||'(ไม่มีชื่อ)',members:c.members??null,source:c.source||'LINE Group',
+  business:c.business||'Other',type:c.type||'customer',status:c.status||'new',
+  owner:c.owner||'Toni',last_contact_at:c.last_contact_at||null,
+  next_action:c.next_action||'',next_action_date:c.next_action_date||null,
+  won_at:c.won_at||null,tags:c.tags||[],notes:c.notes||[],verify:!!c.verify,
+};}
+function freshData(){
+  const seed=window.CRM_SEED||{};
+  return {v:1,businesses:seed.businesses||['UP Wellness','AI','Me & Mia','Other'],
+    customers:(seed.customers||[]).map(normalize)};
+}
+function loadData(){
+  try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);d.customers=(d.customers||[]).map(normalize);return d;}}catch(e){}
+  return freshData();
+}
+
+/* ---------- follow-up engine ---------- */
+function analyze(c){
+  const today=todayISO();const st=stMeta(c.status);const closed=st.bucket==='closed';
+  const days=c.last_contact_at?daysBetween(c.last_contact_at,today):null;
+  const hasPlan=!!(c.next_action&&c.next_action.trim());
+  let bucket='ok';
+  if(closed)bucket='closed';
+  else if(hasPlan&&c.next_action_date){
+    if(c.next_action_date<today)bucket='overdue';
+    else if(c.next_action_date===today)bucket='today';
+    else if(c.next_action_date<=addDaysISO(today,7))bucket='soon';
+    else bucket='planned';
+  } else if(hasPlan)bucket='planned';
+  else{const thr=c.status==='nurture'?THRESH.nurture:THRESH.default;
+    bucket=(days!==null&&days>thr)?'going-cold':'no-plan';}
+  return {days,bucket,closed,hasPlan,
+    needFollow:['overdue','today','going-cold'].includes(bucket),
+    needPlan:!hasPlan&&!closed};
+}
+const SEV={overdue:0,today:1,'going-cold':2,soon:3,'no-plan':4,planned:5,ok:6,closed:7};
+
+/* ---------- small components ---------- */
+function Pill({status}){const s=stMeta(status);return <span className={'st '+s.cls}>{s.label}</span>;}
+function DaysFlag({a}){
+  if(a.closed)return null;
+  if(a.days===null)return <span className="daysflag flag-faint">ยังไม่เคยคุย</span>;
+  const cls=a.days>30?'flag-bad':a.days>14?'flag-warn':'flag-faint';
+  return <span className={'daysflag '+cls}>หายไป {a.days} วัน</span>;
+}
+
+/* ---------- App ---------- */
+function App(){
+  const [data,setData]=useState(loadData);
+  const [tab,setTab]=useState('dash');
+  const [open,setOpen]=useState(null); // customer id or 'new'
+  const [toast,setToast]=useState('');
+  const [pin,setPin]=useState(()=>{try{return localStorage.getItem(PINK)||'';}catch(e){return '';}});
+  const [phase,setPhase]=useState(sb?(pin?'loading':'gate'):'ready'); // ไม่มี sb → local-only
+  const [sync,setSync]=useState('');
+  const fileRef=useRef();
+  const pinRef=useRef(pin);useEffect(()=>{pinRef.current=pin;},[pin]);
+
+  useEffect(()=>{try{localStorage.setItem(LS,JSON.stringify(data));}catch(e){}},[data]); // cache ออฟไลน์
+  // theme + font
+  useEffect(()=>{
+    const root=document.documentElement,mq=matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme=p=>{root.classList.toggle('dark',p==='dark'||(p==='auto'&&mq.matches));root.setAttribute('data-theme',p);};
+    applyTheme(localStorage.getItem('crm_theme')||'auto');
+    root.style.fontSize=(localStorage.getItem('crm_fz')||'16')+'px';
+    const h=()=>{if((localStorage.getItem('crm_theme')||'auto')==='auto')applyTheme('auto');};
+    mq.addEventListener&&mq.addEventListener('change',h);return()=>mq.removeEventListener&&mq.removeEventListener('change',h);
+  },[]);
+  const flash=m=>{setToast(m);setTimeout(()=>setToast(''),2200);};
+
+  // โหลดจากคลาวด์ตอนเปิด (มี PIN แล้ว)
+  useEffect(()=>{if(sb&&pin)loadCloud(pin);},[]); // eslint-disable-line
+  async function loadCloud(p){
+    setPhase('loading');
+    try{
+      let rows=await cloudList(p);
+      if(rows.length===0&&window.CRM_SEED&&(window.CRM_SEED.customers||[]).length){
+        await cloudSeed(p,window.CRM_SEED.customers);rows=await cloudList(p);
+      }
+      setData(d=>({...d,customers:rows}));setSync('cloud');setPhase('ready');
+    }catch(e){
+      if((e.message||'').toLowerCase().includes('unauthorized')){
+        try{localStorage.removeItem(PINK);}catch(_){}
+        setPin('');setSync('');setPhase('gate');flash('PIN ไม่ถูก ลองใหม่');
+      }else{setSync('off');setPhase('ready');flash('ออฟไลน์ — ใช้ข้อมูลในเครื่องไปก่อน');}
+    }
+  }
+  function submitPin(p){if(!p)return;try{localStorage.setItem(PINK,p);}catch(e){}setPin(p);loadCloud(p);}
+  function lock(){try{localStorage.removeItem(PINK);}catch(e){}setPin('');setSync('');setPhase('gate');}
+  function pushCloud(c){if(sb&&pinRef.current)cloudUpsert(pinRef.current,c).then(()=>setSync('cloud')).catch(()=>{setSync('err');});}
+
+  const analyzed=useMemo(()=>data.customers.map(c=>({c,a:analyze(c)})),[data]);
+  const upd=(id,patch)=>setData(d=>{const customers=d.customers.map(c=>c.id===id?{...c,...patch}:c);pushCloud(customers.find(c=>c.id===id));return {...d,customers};});
+  const addCustomer=c=>setData(d=>{const nc=normalize(c,d.customers.length);pushCloud(nc);return {...d,customers:[nc,...d.customers]};});
+  const delCustomer=id=>{if(sb&&pinRef.current)cloudDelete(pinRef.current,id).catch(()=>{});setData(d=>({...d,customers:d.customers.filter(c=>c.id!==id)}));setOpen(null);flash('ลบแล้ว');};
+
+  const curr=open&&open!=='new'?data.customers.find(c=>c.id===open):null;
+
+  function exportJSON(){
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const u=URL.createObjectURL(blob),a=document.createElement('a');
+    a.href=u;a.download='toni-crm-'+todayISO()+'.json';a.click();URL.revokeObjectURL(u);flash('ดาวน์โหลดข้อมูลแล้ว');
+  }
+  function importJSON(e){
+    const f=e.target.files[0];if(!f)return;const r=new FileReader();
+    r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.customers)throw 0;
+      if(confirm('แทนที่ข้อมูลทั้งหมดด้วยไฟล์นี้?')){d.customers=d.customers.map(normalize);setData(d);
+        if(sb&&pinRef.current)cloudReplace(pinRef.current,d.customers).then(()=>setSync('cloud')).catch(()=>setSync('err'));
+        flash('นำเข้าแล้ว');}
+    }catch(err){alert('ไฟล์ไม่ถูกต้อง');}e.target.value='';};r.readAsText(f);
+  }
+
+  if(phase==='gate')return <Gate onSubmit={submitPin}/>;
+  if(phase==='loading')return <Splash/>;
+
+  return <>
+    <Topbar onExport={exportJSON} onImport={()=>fileRef.current.click()} sync={sync} onLock={sb?lock:null}/>
+    <input ref={fileRef} type="file" accept="application/json" style={{display:'none'}} onChange={importJSON}/>
+    <div className="tabs">
+      <button className={'tab'+(tab==='dash'?' on':'')} onClick={()=>setTab('dash')}>🏠 Dashboard</button>
+      <button className={'tab'+(tab==='cust'?' on':'')} onClick={()=>setTab('cust')}>👥 ลูกค้า</button>
+      <button className={'tab'+(tab==='todo'?' on':'')} onClick={()=>setTab('todo')}>✅ ตามงาน</button>
+    </div>
+    <div className="wrap">
+      {tab==='dash'&&<Dashboard analyzed={analyzed} data={data} onOpen={setOpen}/>}
+      {tab==='cust'&&<Customers analyzed={analyzed} data={data} onOpen={setOpen}/>}
+      {tab==='todo'&&<Todo analyzed={analyzed} onOpen={setOpen}/>}
+    </div>
+    {tab==='cust'&&<button className="fab" onClick={()=>setOpen('new')}>＋ เพิ่มลูกค้า</button>}
+    {open==='new'&&<AddSheet businesses={data.businesses} onClose={()=>setOpen(null)} onAdd={c=>{addCustomer(c);setOpen(null);flash('เพิ่มลูกค้าแล้ว');}}/>}
+    {curr&&<Detail c={curr} a={analyze(curr)} businesses={data.businesses} onClose={()=>setOpen(null)} onUpd={upd} onDel={delCustomer} flash={flash}/>}
+    {toast&&<div className="toast">{toast}</div>}
+  </>;
+}
+
+function Topbar({onExport,onImport,sync,onLock}){
+  const root=document.documentElement;
+  const [th,setTh]=useState(localStorage.getItem('crm_theme')||'auto');
+  const [fz,setFz]=useState(localStorage.getItem('crm_fz')||'16');
+  const setTheme=p=>{const mq=matchMedia('(prefers-color-scheme: dark)');root.classList.toggle('dark',p==='dark'||(p==='auto'&&mq.matches));root.setAttribute('data-theme',p);localStorage.setItem('crm_theme',p);setTh(p);};
+  const setFont=p=>{root.style.fontSize=p+'px';localStorage.setItem('crm_fz',p);setFz(p);};
+  const syncTxt={cloud:'☁︎ ซิงค์',off:'⚠ ออฟไลน์',err:'⚠ ซิงค์ค้าง'}[sync];
+  return <div className="topbar">
+    <div className="brand"><span className="dot"></span>Toni CRM</div>
+    <span className="sp"></span>
+    {syncTxt&&<span className={'synced'+(sync==='off'?' off':sync==='err'?' err':'')} title="สถานะซิงค์คลาวด์">{syncTxt}</span>}
+    <button className="iconbtn" onClick={onImport} title="นำเข้า JSON">⬆︎</button>
+    <button className="iconbtn" onClick={onExport} title="สำรอง JSON">⬇︎ Backup</button>
+    <div className="seg">
+      {[['14.5','A−'],['16','A'],['17.5','A+']].map(([v,l])=><button key={v} className={fz===v?'on':''} onClick={()=>setFont(v)}>{l}</button>)}
+    </div>
+    <div className="seg">
+      {[['auto','Auto'],['light','☀︎'],['dark','☾']].map(([v,l])=><button key={v} className={th===v?'on':''} onClick={()=>setTheme(v)}>{l}</button>)}
+    </div>
+    {onLock&&<button className="iconbtn" onClick={onLock} title="ล็อก (เปลี่ยน PIN/เครื่อง)">🔒</button>}
+  </div>;
+}
+
+function Gate({onSubmit}){
+  const [p,setP]=useState('');
+  return <div className="gate"><div className="gatecard">
+    <div className="dot" style={{width:42,height:42,margin:'0 auto 16px'}}></div>
+    <h2 style={{textAlign:'center',fontSize:'1.3rem'}}>Toni CRM</h2>
+    <p className="muted" style={{textAlign:'center',fontSize:'.88rem',margin:'8px 0 18px'}}>ใส่ PIN เพื่อเข้าใช้<br/>(ครั้งเดียวต่อเครื่อง)</p>
+    <input className="inp" type="password" value={p} autoFocus inputMode="text"
+      onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')onSubmit(p.trim());}} placeholder="PIN"/>
+    <button className="btn btn-gold" style={{width:'100%',marginTop:14}} onClick={()=>onSubmit(p.trim())}>เข้าใช้งาน</button>
+  </div></div>;
+}
+function Splash(){return <div className="gate"><div className="gatecard" style={{textAlign:'center'}}>
+  <div className="dot" style={{width:42,height:42,margin:'0 auto 14px'}}></div>
+  <div className="muted">กำลังโหลดจากคลาวด์…</div></div></div>;}
+
+/* ---------- Dashboard ---------- */
+function Dashboard({analyzed,data,onOpen}){
+  const total=analyzed.length;
+  const active=analyzed.filter(x=>stMeta(x.c.status).bucket==='active').length;
+  const follow=analyzed.filter(x=>x.a.needFollow);
+  const noPlan=analyzed.filter(x=>x.a.needPlan);
+  const ym=todayISO().slice(0,7);
+  const wonM=analyzed.filter(x=>x.c.status==='won'&&(x.c.won_at||'').slice(0,7)===ym).length;
+  const byBiz=countBy(analyzed,x=>x.c.business);
+  const byStatus=countBy(analyzed,x=>x.c.status);
+  const followSorted=[...follow].sort((p,q)=>SEV[p.a.bucket]-SEV[q.a.bucket]||(q.a.days||0)-(p.a.days||0));
+  return <>
+    <div className="grid kpis">
+      <KPI n={total} k="ลูกค้าทั้งหมด"/>
+      <KPI n={active} k="Active" cls="teal"/>
+      <KPI n={follow.length} k="🔴 ต้องตาม" cls="bad"/>
+      <KPI n={noPlan.length} k="⚪ ยังไม่วางแผน" cls="gold"/>
+      <KPI n={wonM} k="✅ ปิดได้เดือนนี้" cls="ok"/>
+    </div>
+    <div className="grid cols2" style={{marginTop:14}}>
+      <div className="panel">
+        <h3>🔴 ใครควรตาม (วันนี้)</h3>
+        {followSorted.length?followSorted.slice(0,12).map(x=><MiniRow key={x.c.id} x={x} onOpen={onOpen}/>):
+          <div className="empty">ยังไม่มีใครค้างตาม 🎉<br/><span className="faint">เริ่มจัดสถานะ + วางแผนได้ที่แท็บ "ลูกค้า"</span></div>}
+      </div>
+      <div className="panel">
+        <h3>⚪ ยังไม่วางแผน <span className="faint" style={{fontWeight:400,fontSize:'.8rem'}}>({noPlan.length})</span></h3>
+        {noPlan.length?noPlan.slice(0,12).map(x=><MiniRow key={x.c.id} x={x} onOpen={onOpen}/>):
+          <div className="empty">ทุกคนมีแผนแล้ว ✨</div>}
+        {noPlan.length>12&&<div className="faint" style={{fontSize:'.8rem',marginTop:8}}>+ อีก {noPlan.length-12} ราย — ดูทั้งหมดที่แท็บ "ลูกค้า"</div>}
+      </div>
+    </div>
+    <div className="grid cols2" style={{marginTop:14}}>
+      <div className="panel"><h3>แยกตาม Business</h3>{byBiz.map(([k,v])=><Bar key={k} label={k} v={v} max={total} color="var(--teal)"/>)}</div>
+      <div className="panel"><h3>แยกตาม สถานะ</h3>{byStatus.map(([k,v])=><Bar key={k} label={stMeta(k).label} v={v} max={total} color="var(--gold)"/>)}</div>
+    </div>
+  </>;
+}
+function KPI({n,k,cls}){return <div className={'kpi '+(cls||'')}><div className="n">{n}</div><div className="k">{k}</div></div>;}
+function Bar({label,v,max,color}){const pct=max?Math.round(v/max*100):0;return <div className="bar"><span style={{width:120,color:'var(--muted)'}}>{label}</span><span className="track"><span className="fill" style={{width:pct+'%',background:color}}></span></span><span className="v">{v}</span></div>;}
+function MiniRow({x,onOpen}){return <button className="crow" style={{padding:'9px 11px'}} onClick={()=>onOpen(x.c.id)}>
+  <div><div className="nm" style={{fontSize:'.92rem'}}>{x.c.name}</div>
+    <div className="meta"><span className="biz">{x.c.business}</span><Pill status={x.c.status}/></div></div>
+  <div className="right"><DaysFlag a={x.a}/>{x.c.next_action&&<span className="faint" style={{fontSize:'.74rem'}}>{x.c.next_action_date?thDate(x.c.next_action_date):'มีแผน'}</span>}</div>
+</button>;}
+
+/* ---------- Customers ---------- */
+function Customers({analyzed,data,onOpen}){
+  const [q,setQ]=useState('');const [biz,setBiz]=useState('');const [stf,setStf]=useState('');
+  const [only,setOnly]=useState('');const [showComm,setShowComm]=useState(true);
+  const list=useMemo(()=>analyzed.filter(({c,a})=>{
+    if(q&&!c.name.toLowerCase().includes(q.toLowerCase()))return false;
+    if(biz&&c.business!==biz)return false;
+    if(stf&&c.status!==stf)return false;
+    if(only==='follow'&&!a.needFollow)return false;
+    if(only==='plan'&&!a.needPlan)return false;
+    if(!showComm&&c.type==='community')return false;
+    return true;
+  }).sort((p,r)=>(r.a.needFollow-p.a.needFollow)||(r.a.needPlan-p.a.needPlan)||p.c.name.localeCompare(r.c.name,'th')),
+  [analyzed,q,biz,stf,only,showComm]);
+  return <>
+    <input className="inp" placeholder="🔍 ค้นหาชื่อลูกค้า/กลุ่ม…" value={q} onChange={e=>setQ(e.target.value)}/>
+    <div className="filters">
+      <select className="inp" value={biz} onChange={e=>setBiz(e.target.value)}><option value="">ทุก Business</option>{data.businesses.map(b=><option key={b} value={b}>{b}</option>)}</select>
+      <select className="inp" value={stf} onChange={e=>setStf(e.target.value)}><option value="">ทุกสถานะ</option>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+      <button className={'fchip'+(only==='follow'?' on':'')} onClick={()=>setOnly(only==='follow'?'':'follow')}>🔴 ต้องตาม</button>
+      <button className={'fchip'+(only==='plan'?' on':'')} onClick={()=>setOnly(only==='plan'?'':'plan')}>⚪ ยังไม่วางแผน</button>
+      <button className={'fchip'+(!showComm?' on':'')} onClick={()=>setShowComm(!showComm)}>{showComm?'ซ่อนชุมชน':'แสดงชุมชน'}</button>
+    </div>
+    <div className="faint" style={{fontSize:'.82rem',marginTop:10}}>{list.length} ราย</div>
+    <div className="clist">
+      {list.map(x=><CustomerRow key={x.c.id} x={x} onOpen={onOpen}/>)}
+      {!list.length&&<div className="empty">ไม่พบลูกค้าตามเงื่อนไข</div>}
+    </div>
+  </>;
+}
+function CustomerRow({x,onOpen}){const {c,a}=x;return <button className="crow" onClick={()=>onOpen(c.id)}>
+  <div style={{minWidth:0}}>
+    <div className="nm">{c.name}{c.verify&&<span title="ชื่ออ่านไม่ชัด ให้ตรวจ" style={{color:'var(--warn)'}}> ⚠</span>}</div>
+    <div className="meta"><span className="biz">{c.business}</span><Pill status={c.status}/>{c.members!=null&&<span className="faint" style={{fontSize:'.74rem'}}>👥 {c.members}</span>}{c.type==='community'&&<span className="faint" style={{fontSize:'.72rem'}}>ชุมชน</span>}</div>
+    {c.next_action&&<div className="na">▶ <b>{c.next_action}</b>{c.next_action_date&&' · '+thDate(c.next_action_date)}</div>}
+  </div>
+  <div className="right"><DaysFlag a={a}/>
+    {a.bucket==='overdue'&&<span className="daysflag flag-bad">ค้างตาม</span>}
+    {a.bucket==='today'&&<span className="daysflag flag-warn">ถึงกำหนดวันนี้</span>}
+    {a.needPlan&&<span className="faint" style={{fontSize:'.72rem'}}>ยังไม่วางแผน</span>}
+  </div>
+</button>;}
+
+/* ---------- Todo ---------- */
+function Todo({analyzed,onOpen}){
+  const g={overdue:[],today:[],soon:[],'going-cold':[],'no-plan':[]};
+  analyzed.forEach(x=>{if(g[x.a.bucket])g[x.a.bucket].push(x);});
+  const sect=[['overdue','🔴 ค้าง (เลยกำหนด)'],['today','🟠 วันนี้'],['going-cold','🟡 ไม่ได้ตามนาน'],['soon','🔵 เร็วๆ นี้'],['no-plan','⚪ ยังไม่วางแผน']];
+  return <>{sect.map(([k,t])=><div className="panel" key={k} style={{marginBottom:12}}>
+    <h3>{t} <span className="faint" style={{fontWeight:400,fontSize:'.8rem'}}>({g[k].length})</span></h3>
+    {g[k].length?g[k].slice(0,30).map(x=><MiniRow key={x.c.id} x={x} onOpen={onOpen}/>):<div className="empty" style={{padding:14}}>—</div>}
+    {g[k].length>30&&<div className="faint" style={{fontSize:'.8rem',marginTop:6}}>+ อีก {g[k].length-30}</div>}
+  </div>)}</>;
+}
+
+/* ---------- Add ---------- */
+function AddSheet({businesses,onClose,onAdd}){
+  const [name,setName]=useState('');const [business,setBusiness]=useState(businesses[0]);const [members,setMembers]=useState('');
+  return <Overlay onClose={onClose} title="เพิ่มลูกค้า">
+    <label className="lbl">ชื่อ *</label>
+    <input className="inp" autoFocus value={name} onChange={e=>setName(e.target.value)} placeholder="ชื่อลูกค้า/กลุ่ม"/>
+    <label className="lbl">Business</label>
+    <select className="inp" style={{width:'100%'}} value={business} onChange={e=>setBusiness(e.target.value)}>{businesses.map(b=><option key={b}>{b}</option>)}</select>
+    <label className="lbl">จำนวนสมาชิก (ถ้ามี)</label>
+    <input className="inp" type="number" value={members} onChange={e=>setMembers(e.target.value)} placeholder="—"/>
+    <div className="row" style={{marginTop:18,justifyContent:'flex-end'}}>
+      <button className="btn btn-ghost" onClick={onClose}>ยกเลิก</button>
+      <button className="btn btn-gold" onClick={()=>{if(!name.trim())return;onAdd({name:name.trim(),business,members:members?+members:null,type:members>40?'community':'customer'});}}>เพิ่ม</button>
+    </div>
+  </Overlay>;
+}
+
+/* ---------- Detail ---------- */
+function Detail({c,a,businesses,onClose,onUpd,onDel,flash}){
+  const [note,setNote]=useState('');const [chan,setChan]=useState('LINE');
+  const [na,setNa]=useState(c.next_action||'');const [nad,setNad]=useState(c.next_action_date||'');
+  const saveNote=()=>{if(!note.trim())return;const n={date:todayISO(),channel:chan,summary:note.trim(),by:'Toni'};
+    onUpd(c.id,{notes:[n,...c.notes],last_contact_at:todayISO()});setNote('');flash('บันทึกโน้ต + อัปเดตวันคุยล่าสุด');};
+  const savePlan=()=>{onUpd(c.id,{next_action:na.trim(),next_action_date:na.trim()?(nad||null):null});flash('ตั้งแผนถัดไปแล้ว');};
+  const setStatus=s=>onUpd(c.id,s==='won'?{status:s,won_at:todayISO()}:{status:s});
+  return <Overlay onClose={onClose} title={c.name} sub={<><span className="biz">{c.business}</span> <Pill status={c.status}/> {c.members!=null&&<span className="faint" style={{fontSize:'.78rem'}}>👥 {c.members}</span>} <DaysFlag a={a}/></>}>
+    <label className="lbl">สถานะ</label>
+    <div className="row">{STATUSES.map(s=><button key={s.id} className={'fchip'+(c.status===s.id?' on':'')} onClick={()=>setStatus(s.id)}>{s.label}</button>)}</div>
+
+    <label className="lbl">Business</label>
+    <select className="inp" style={{width:'100%'}} value={c.business} onChange={e=>onUpd(c.id,{business:e.target.value})}>{businesses.map(b=><option key={b}>{b}</option>)}{!businesses.includes(c.business)&&<option>{c.business}</option>}</select>
+
+    <div style={{height:1,background:'var(--border)',margin:'16px 0'}}></div>
+
+    <label className="lbl">✍️ บันทึกโน้ต (คุยอะไรไป)</label>
+    <div className="row" style={{marginBottom:6}}>{CHANNELS.map(ch=><button key={ch} className={'fchip'+(chan===ch?' on':'')} onClick={()=>setChan(ch)}>{ch}</button>)}</div>
+    <textarea className="inp" rows="2" value={note} onChange={e=>setNote(e.target.value)} placeholder="เช่น เสนอ eSpring + ส่งราคา รอตอบกลับ"/>
+    <div className="row" style={{marginTop:8,justifyContent:'flex-end'}}><button className="btn btn-gold" onClick={saveNote}>บันทึกโน้ต</button></div>
+
+    <label className="lbl">🎯 แผนถัดไป (ตามอะไร เมื่อไร)</label>
+    <input className="inp" value={na} onChange={e=>setNa(e.target.value)} placeholder="เช่น โทรตามเรื่องราคา"/>
+    <div className="row" style={{marginTop:8,alignItems:'center'}}>
+      <input className="inp" style={{width:'auto'}} type="date" value={nad||''} onChange={e=>setNad(e.target.value)}/>
+      <button className="btn btn-ghost" onClick={savePlan}>ตั้งแผน</button>
+    </div>
+
+    <label className="lbl" style={{marginTop:16}}>🕘 ประวัติโน้ต ({c.notes.length})</label>
+    {c.notes.length?c.notes.map((n,i)=><div className="note-item" key={i}><div className="when">{thDate(n.date)} · {n.channel}</div><div>{n.summary}</div></div>):<div className="faint" style={{fontSize:'.85rem'}}>ยังไม่มีโน้ต</div>}
+
+    <div style={{height:1,background:'var(--border)',margin:'18px 0 12px'}}></div>
+    <button className="btn btn-bad" onClick={()=>{if(confirm('ลบลูกค้านี้?'))onDel(c.id);}}>ลบลูกค้า</button>
+  </Overlay>;
+}
+
+function Overlay({title,sub,children,onClose}){
+  return <div className="ovl" onClick={e=>{if(e.target.classList.contains('ovl'))onClose();}}>
+    <div className="sheet">
+      <div className="hd" style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+        <div style={{flex:1,minWidth:0}}><h3 style={{fontSize:'1.1rem'}}>{title}</h3>{sub&&<div className="meta" style={{display:'flex',gap:8,alignItems:'center',marginTop:6,flexWrap:'wrap'}}>{sub}</div>}</div>
+        <button className="x" onClick={onClose}>✕</button>
+      </div>
+      <div className="bd">{children}</div>
+    </div>
+  </div>;
+}
+
+function countBy(arr,fn){const m={};arr.forEach(x=>{const k=fn(x);m[k]=(m[k]||0)+1;});return Object.entries(m).sort((a,b)=>b[1]-a[1]);}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>
+/* คอมไพล์ JSX ด้วย classic runtime (React.createElement) — กัน automatic runtime ที่ emit `import` แล้วพังนอก module */
+(function(){
+  try{
+    var src=document.getElementById('appsrc').textContent;
+    var code=Babel.transform(src,{presets:[['react',{runtime:'classic'}]]}).code;
+    (0,eval)(code);
+  }catch(e){
+    document.getElementById('root').innerHTML='<pre style="padding:24px;color:#c0392b;white-space:pre-wrap;font-family:monospace">โหลดแอปไม่ได้: '+e.message+'</pre>';
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
