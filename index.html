@@ -86,6 +86,8 @@ button{font:inherit;cursor:pointer}
 .st-stale{background:color-mix(in srgb,var(--bad) 14%,transparent);color:var(--bad);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}
 .st-won{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 40%,transparent)}
 .st-lost{background:color-mix(in srgb,var(--text) 8%,transparent);color:var(--faint);border:1px solid var(--border)}
+.st-followup{background:color-mix(in srgb,#0EA5E9 16%,transparent);color:#0284C7;border:1px solid color-mix(in srgb,#0EA5E9 42%,transparent)}
+html.dark .st-followup{color:#38BDF8}
 .biz{font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:6px;background:color-mix(in srgb,var(--text) 7%,transparent);color:var(--muted)}
 
 /* customer row/card */
@@ -147,6 +149,10 @@ html.dark .btn-gold{color:#0c0c12}
 .bar .track{flex:1;height:8px;border-radius:99px;background:color-mix(in srgb,var(--text) 8%,transparent);overflow:hidden}
 .bar .fill{height:100%;border-radius:99px}
 .bar .v{width:34px;text-align:right;color:var(--muted);font-weight:600}
+.stsum{display:flex;flex-wrap:wrap;gap:8px}
+.stsum-item{display:inline-flex;align-items:center;gap:7px;background:var(--elevated);border:1px solid var(--border);border-radius:999px;padding:5px 12px 5px 7px;cursor:pointer}
+.stsum-item:hover{border-color:var(--gold)}
+.stsum-item b{font-family:'Space Grotesk',sans-serif;font-size:1rem;min-width:18px;text-align:right}
 
 /* fab */
 .fab{position:fixed;right:18px;bottom:22px;z-index:35;border:0;border-radius:16px;padding:13px 18px;font-weight:700;
@@ -199,6 +205,7 @@ const STATUSES=[
  {id:'new',label:'ยังไม่จัด',cls:'st-new',bucket:'seed'},
  {id:'active',label:'กำลังคุย',cls:'st-active',bucket:'active'},
  {id:'following',label:'กำลังตาม',cls:'st-following',bucket:'active'},
+ {id:'followup',label:'ติดตาม',cls:'st-followup',bucket:'active'},
  {id:'nurture',label:'ดูแลยาว',cls:'st-nurture',bucket:'active'},
  {id:'stale',label:'ค้าง/หาย',cls:'st-stale',bucket:'alert'},
  {id:'won',label:'ปิดได้',cls:'st-won',bucket:'closed'},
@@ -263,6 +270,7 @@ function App(){
   const [data,setData]=useState(loadData);
   const [tab,setTab]=useState('dash');
   const [open,setOpen]=useState(null); // customer id or 'new'
+  const [custInit,setCustInit]=useState(''); // สถานะเริ่มต้นเวลามาจาก dashboard
   const [toast,setToast]=useState('');
   const [pin,setPin]=useState(()=>{try{return localStorage.getItem(PINK)||'';}catch(e){return '';}});
   const [phase,setPhase]=useState(sb?(pin?'loading':'gate'):'ready'); // ไม่มี sb → local-only
@@ -315,6 +323,8 @@ function App(){
   const setProjectFor=(id,pid)=>upd(id,{project_id:pid||null});
   const addProject=(name,assignIds)=>{const np={id:'p'+Date.now().toString(36),name};setData(d=>{const projects=[...(d.projects||[]),np];if(sb&&pinRef.current)cloudSetApp(pinRef.current,'projects',projects).catch(()=>{});let customers=d.customers;if(assignIds&&assignIds.length){customers=d.customers.map(c=>assignIds.includes(c.id)?{...c,project_id:np.id}:c);assignIds.forEach(id=>pushCloud(customers.find(c=>c.id===id)));}return {...d,projects,customers};});flash('เพิ่มโปรเจกต์ "'+name+'"');};
 
+  const showStatus=sid=>{setCustInit(sid);setTab('cust');};
+
   const curr=open&&open!=='new'?data.customers.find(c=>c.id===open):null;
 
   function exportJSON(){
@@ -339,12 +349,12 @@ function App(){
     <input ref={fileRef} type="file" accept="application/json" style={{display:'none'}} onChange={importJSON}/>
     <div className="tabs">
       <button className={'tab'+(tab==='dash'?' on':'')} onClick={()=>setTab('dash')}>🏠 Dashboard</button>
-      <button className={'tab'+(tab==='cust'?' on':'')} onClick={()=>setTab('cust')}>👥 ลูกค้า</button>
+      <button className={'tab'+(tab==='cust'?' on':'')} onClick={()=>{setCustInit('');setTab('cust');}}>👥 ลูกค้า</button>
       <button className={'tab'+(tab==='todo'?' on':'')} onClick={()=>setTab('todo')}>✅ ตามงาน</button>
     </div>
     <div className="wrap">
-      {tab==='dash'&&<Dashboard analyzed={analyzed} data={data} onOpen={setOpen}/>}
-      {tab==='cust'&&<Customers analyzed={analyzed} data={data} projects={data.projects||[]} onOpen={setOpen} onDelete={delOne} onBulkDelete={bulkDelete} onStatus={setStatusFor} onBulkStatus={(ids,s)=>bulkUpdate(ids,{status:s})} onProject={setProjectFor} onBulkProject={(ids,pid)=>bulkUpdate(ids,{project_id:pid||null})} onAddProject={addProject}/>}
+      {tab==='dash'&&<Dashboard analyzed={analyzed} data={data} onOpen={setOpen} onStatusClick={showStatus}/>}
+      {tab==='cust'&&<Customers analyzed={analyzed} data={data} projects={data.projects||[]} initStatus={custInit} onOpen={setOpen} onDelete={delOne} onBulkDelete={bulkDelete} onStatus={setStatusFor} onBulkStatus={(ids,s)=>bulkUpdate(ids,{status:s})} onProject={setProjectFor} onBulkProject={(ids,pid)=>bulkUpdate(ids,{project_id:pid||null})} onAddProject={addProject}/>}
       {tab==='todo'&&<Todo analyzed={analyzed} onOpen={setOpen}/>}
     </div>
     {tab==='cust'&&<button className="fab" onClick={()=>setOpen('new')}>＋ เพิ่มลูกค้า</button>}
@@ -393,7 +403,7 @@ function Splash(){return <div className="gate"><div className="gatecard" style={
   <div className="muted">กำลังโหลดจากคลาวด์…</div></div></div>;}
 
 /* ---------- Dashboard ---------- */
-function Dashboard({analyzed,data,onOpen}){
+function Dashboard({analyzed,data,onOpen,onStatusClick}){
   const total=analyzed.length;
   const active=analyzed.filter(x=>stMeta(x.c.status).bucket==='active').length;
   const follow=analyzed.filter(x=>x.a.needFollow);
@@ -401,7 +411,7 @@ function Dashboard({analyzed,data,onOpen}){
   const ym=todayISO().slice(0,7);
   const wonM=analyzed.filter(x=>x.c.status==='won'&&(x.c.won_at||'').slice(0,7)===ym).length;
   const byBiz=countBy(analyzed,x=>x.c.business);
-  const byStatus=countBy(analyzed,x=>x.c.status);
+  const cnt={};analyzed.forEach(x=>{cnt[x.c.status]=(cnt[x.c.status]||0)+1;});
   const followSorted=[...follow].sort((p,q)=>SEV[p.a.bucket]-SEV[q.a.bucket]||(q.a.days||0)-(p.a.days||0));
   return <>
     <div className="grid kpis">
@@ -410,6 +420,13 @@ function Dashboard({analyzed,data,onOpen}){
       <KPI n={follow.length} k="🔴 ต้องตาม" cls="bad"/>
       <KPI n={noPlan.length} k="⚪ ยังไม่วางแผน" cls="gold"/>
       <KPI n={wonM} k="✅ ปิดได้เดือนนี้" cls="ok"/>
+    </div>
+    <div className="panel" style={{marginTop:14}}>
+      <h3>สรุปตามสถานะ <span className="faint" style={{fontWeight:400,fontSize:'.78rem'}}>(แตะเพื่อกรอง)</span></h3>
+      <div className="stsum">
+        {STATUSES.map(s=><button key={s.id} className="stsum-item" onClick={()=>onStatusClick(s.id)}>
+          <span className={'st '+s.cls}>{s.label}</span><b>{cnt[s.id]||0}</b></button>)}
+      </div>
     </div>
     <div className="grid cols2" style={{marginTop:14}}>
       <div className="panel">
@@ -424,9 +441,8 @@ function Dashboard({analyzed,data,onOpen}){
         {noPlan.length>12&&<div className="faint" style={{fontSize:'.8rem',marginTop:8}}>+ อีก {noPlan.length-12} ราย — ดูทั้งหมดที่แท็บ "ลูกค้า"</div>}
       </div>
     </div>
-    <div className="grid cols2" style={{marginTop:14}}>
-      <div className="panel"><h3>แยกตาม Business</h3>{byBiz.map(([k,v])=><Bar key={k} label={k} v={v} max={total} color="var(--teal)"/>)}</div>
-      <div className="panel"><h3>แยกตาม สถานะ</h3>{byStatus.map(([k,v])=><Bar key={k} label={stMeta(k).label} v={v} max={total} color="var(--gold)"/>)}</div>
+    <div className="panel" style={{marginTop:14}}>
+      <h3>แยกตาม Business</h3>{byBiz.map(([k,v])=><Bar key={k} label={k} v={v} max={total} color="var(--teal)"/>)}
     </div>
   </>;
 }
@@ -439,9 +455,9 @@ function MiniRow({x,onOpen}){return <button className="crow" style={{padding:'9p
 </button>;}
 
 /* ---------- Customers ---------- */
-const ST_COLOR={new:'var(--faint)',active:'var(--teal)',following:'var(--gold)',nurture:'var(--violet)',stale:'var(--bad)',won:'var(--ok)',lost:'var(--faint)'};
-function Customers({analyzed,data,projects,onOpen,onDelete,onBulkDelete,onStatus,onBulkStatus,onProject,onBulkProject,onAddProject}){
-  const [q,setQ]=useState('');const [biz,setBiz]=useState('');const [stf,setStf]=useState('');
+const ST_COLOR={new:'var(--faint)',active:'var(--teal)',following:'var(--gold)',followup:'#0EA5E9',nurture:'var(--violet)',stale:'var(--bad)',won:'var(--ok)',lost:'var(--faint)'};
+function Customers({analyzed,data,projects,initStatus,onOpen,onDelete,onBulkDelete,onStatus,onBulkStatus,onProject,onBulkProject,onAddProject}){
+  const [q,setQ]=useState('');const [biz,setBiz]=useState('');const [stf,setStf]=useState(initStatus||'');
   const [only,setOnly]=useState('');const [showComm,setShowComm]=useState(true);
   const [sel,setSel]=useState(()=>new Set());
   const list=useMemo(()=>analyzed.filter(({c,a})=>{
@@ -552,11 +568,16 @@ function AddSheet({businesses,onClose,onAdd}){
 function Detail({c,a,businesses,projects,onClose,onUpd,onDel,onAddProject,flash}){
   const [note,setNote]=useState('');const [chan,setChan]=useState('LINE');
   const [na,setNa]=useState(c.next_action||'');const [nad,setNad]=useState(c.next_action_date||'');
+  const [nm,setNm]=useState(c.name);
   const saveNote=()=>{if(!note.trim())return;const n={date:todayISO(),channel:chan,summary:note.trim(),by:'Toni'};
     onUpd(c.id,{notes:[n,...c.notes],last_contact_at:todayISO()});setNote('');flash('บันทึกโน้ต + อัปเดตวันคุยล่าสุด');};
   const savePlan=()=>{onUpd(c.id,{next_action:na.trim(),next_action_date:na.trim()?(nad||null):null});flash('ตั้งแผนถัดไปแล้ว');};
   const setStatus=s=>onUpd(c.id,s==='won'?{status:s,won_at:todayISO()}:{status:s});
   return <Overlay onClose={onClose} title={c.name} sub={<><span className="biz">{c.business}</span> <Pill status={c.status}/> {c.members!=null&&<span className="faint" style={{fontSize:'.78rem'}}>👥 {c.members}</span>} <DaysFlag a={a}/></>}>
+    <label className="lbl">ชื่อกลุ่ม / ลูกค้า</label>
+    <input className="inp" value={nm} onChange={e=>setNm(e.target.value)}
+      onBlur={()=>{const v=nm.trim();if(v&&v!==c.name)onUpd(c.id,{name:v});else if(!v)setNm(c.name);}}/>
+
     <label className="lbl">สถานะ</label>
     <div className="row">{STATUSES.map(s=><button key={s.id} className={'fchip'+(c.status===s.id?' on':'')} onClick={()=>setStatus(s.id)}>{s.label}</button>)}</div>
 
