@@ -1,0 +1,9 @@
+seed-embed.js
+data/
+build_seed.py
+CRM-SPEC.md
+CRM-SPEC.html
+toni-crm-*.json
+line group/
+.DS_Store
+.claude/

@@ -60,7 +60,7 @@ create or replace function public.crm_replace_all(p text, rows jsonb)
 declare n int;
 begin
   if not public.crm_ok(p) then raise exception 'unauthorized'; end if;
-  delete from public.crm_customers;
+  delete from public.crm_customers where true; -- WHERE true: เลี่ยง Supabase safe-delete (21000)
   insert into public.crm_customers(id, data)
     select x->>'id', x from jsonb_array_elements(rows) as x;
   get diagnostics n = row_count;

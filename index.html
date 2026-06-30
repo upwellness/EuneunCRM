@@ -91,8 +91,18 @@ button{font:inherit;cursor:pointer}
 /* customer row/card */
 .clist{display:grid;gap:10px;margin-top:12px}
 .crow{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 14px;
-  box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%}
+  box-shadow:var(--shadow);display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;flex-wrap:wrap}
 .crow:hover{border-color:var(--gold)}
+.chk{width:18px;height:18px;accent-color:var(--gold);flex:none;margin-top:3px;cursor:pointer}
+.cmain{min-width:0;flex:1;cursor:pointer}
+.cact{display:flex;gap:6px;align-items:center;flex:none;flex-wrap:wrap;justify-content:flex-end}
+.minisel{background:var(--elevated);border:1px solid var(--border);border-left-width:3px;border-radius:9px;color:var(--text);padding:6px 7px;font:inherit;font-size:.78rem;max-width:130px}
+.minisel:focus{outline:0;border-color:var(--gold)}
+.delbtn{border:1px solid color-mix(in srgb,var(--bad) 35%,transparent);background:color-mix(in srgb,var(--bad) 10%,transparent);color:var(--bad);border-radius:9px;min-width:34px;height:32px;font-size:.92rem;flex:none}
+.crow.sel{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 8%,transparent)}
+.bulkbar{position:sticky;top:98px;z-index:25;display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--elevated);border:1px solid var(--gold);border-radius:12px;padding:9px 12px;margin:12px 0;box-shadow:var(--shadow)}
+.bulkbar .lbln{font-weight:700;font-size:.86rem;color:var(--gold-strong)}
+@media(max-width:560px){.cact{width:100%;justify-content:flex-start;margin-top:8px}.minisel{flex:1 1 42%;max-width:none}}
 .crow .nm{font-weight:600;font-size:.98rem}
 .crow .meta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
 .crow .right{margin-left:auto;text-align:right;white-space:nowrap;display:flex;flex-direction:column;gap:6px;align-items:flex-end}
@@ -173,6 +183,8 @@ async function cloudUpsert(pin,c){const {error}=await sb.rpc('crm_upsert',{p:pin
 async function cloudDelete(pin,id){const {error}=await sb.rpc('crm_delete',{p:pin,cid:id});if(error)throw new Error(error.message||'err');}
 async function cloudSeed(pin,rows){const {error}=await sb.rpc('crm_seed_if_empty',{p:pin,rows});if(error)throw new Error(error.message||'err');}
 async function cloudReplace(pin,rows){const {error}=await sb.rpc('crm_replace_all',{p:pin,rows});if(error)throw new Error(error.message||'err');}
+async function cloudGetApp(pin,key){const {data,error}=await sb.rpc('crm_get_app',{p:pin,key});if(error)throw new Error(error.message||'err');return data;}
+async function cloudSetApp(pin,key,val){const {error}=await sb.rpc('crm_set_app',{p:pin,key,val});if(error)throw new Error(error.message||'err');}
 
 /* ---------- date helpers (local) ---------- */
 const pad=n=>String(n).padStart(2,'0');
@@ -208,12 +220,13 @@ function normalize(c,i){return {
 function freshData(){
   const seed=window.CRM_SEED||{};
   return {v:1,businesses:seed.businesses||['UP Wellness','AI','Me & Mia','Other'],
-    customers:(seed.customers||[]).map(normalize)};
+    projects:[],customers:(seed.customers||[]).map(normalize)};
 }
 function loadData(){
-  try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);d.customers=(d.customers||[]).map(normalize);return d;}}catch(e){}
+  try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);d.customers=(d.customers||[]).map(normalize);d.projects=d.projects||[];return d;}}catch(e){}
   return freshData();
 }
+function projName(projects,id){const p=(projects||[]).find(x=>x.id===id);return p?p.name:'';}
 
 /* ---------- follow-up engine ---------- */
 function analyze(c){
@@ -279,6 +292,7 @@ function App(){
         await cloudSeed(p,window.CRM_SEED.customers);rows=await cloudList(p);
       }
       setData(d=>({...d,customers:rows}));setSync('cloud');setPhase('ready');
+      try{const proj=await cloudGetApp(p,'projects');if(Array.isArray(proj))setData(d=>({...d,projects:proj}));}catch(_){}
     }catch(e){
       if((e.message||'').toLowerCase().includes('unauthorized')){
         try{localStorage.removeItem(PINK);}catch(_){}
@@ -294,6 +308,12 @@ function App(){
   const upd=(id,patch)=>setData(d=>{const customers=d.customers.map(c=>c.id===id?{...c,...patch}:c);pushCloud(customers.find(c=>c.id===id));return {...d,customers};});
   const addCustomer=c=>setData(d=>{const nc=normalize(c,d.customers.length);pushCloud(nc);return {...d,customers:[nc,...d.customers]};});
   const delCustomer=id=>{if(sb&&pinRef.current)cloudDelete(pinRef.current,id).catch(()=>{});setData(d=>({...d,customers:d.customers.filter(c=>c.id!==id)}));setOpen(null);flash('ลบแล้ว');};
+  const delOne=id=>{if(confirm('ลบลูกค้านี้?'))delCustomer(id);};
+  const bulkDelete=ids=>{if(!ids.length||!confirm('ลบ '+ids.length+' คน? (กู้คืนไม่ได้)'))return;ids.forEach(id=>{if(sb&&pinRef.current)cloudDelete(pinRef.current,id).catch(()=>{});});setData(d=>({...d,customers:d.customers.filter(c=>!ids.includes(c.id))}));flash('ลบ '+ids.length+' คนแล้ว');};
+  const bulkUpdate=(ids,patch)=>{const set=new Set(ids);setData(d=>({...d,customers:d.customers.map(c=>{if(!set.has(c.id))return c;const nc={...c,...patch};if(patch.status==='won'&&!c.won_at)nc.won_at=todayISO();pushCloud(nc);return nc;})}));};
+  const setStatusFor=(id,s)=>upd(id,s==='won'?{status:s,won_at:todayISO()}:{status:s});
+  const setProjectFor=(id,pid)=>upd(id,{project_id:pid||null});
+  const addProject=(name,assignIds)=>{const np={id:'p'+Date.now().toString(36),name};setData(d=>{const projects=[...(d.projects||[]),np];if(sb&&pinRef.current)cloudSetApp(pinRef.current,'projects',projects).catch(()=>{});let customers=d.customers;if(assignIds&&assignIds.length){customers=d.customers.map(c=>assignIds.includes(c.id)?{...c,project_id:np.id}:c);assignIds.forEach(id=>pushCloud(customers.find(c=>c.id===id)));}return {...d,projects,customers};});flash('เพิ่มโปรเจกต์ "'+name+'"');};
 
   const curr=open&&open!=='new'?data.customers.find(c=>c.id===open):null;
 
@@ -324,12 +344,12 @@ function App(){
     </div>
     <div className="wrap">
       {tab==='dash'&&<Dashboard analyzed={analyzed} data={data} onOpen={setOpen}/>}
-      {tab==='cust'&&<Customers analyzed={analyzed} data={data} onOpen={setOpen}/>}
+      {tab==='cust'&&<Customers analyzed={analyzed} data={data} projects={data.projects||[]} onOpen={setOpen} onDelete={delOne} onBulkDelete={bulkDelete} onStatus={setStatusFor} onBulkStatus={(ids,s)=>bulkUpdate(ids,{status:s})} onProject={setProjectFor} onBulkProject={(ids,pid)=>bulkUpdate(ids,{project_id:pid||null})} onAddProject={addProject}/>}
       {tab==='todo'&&<Todo analyzed={analyzed} onOpen={setOpen}/>}
     </div>
     {tab==='cust'&&<button className="fab" onClick={()=>setOpen('new')}>＋ เพิ่มลูกค้า</button>}
     {open==='new'&&<AddSheet businesses={data.businesses} onClose={()=>setOpen(null)} onAdd={c=>{addCustomer(c);setOpen(null);flash('เพิ่มลูกค้าแล้ว');}}/>}
-    {curr&&<Detail c={curr} a={analyze(curr)} businesses={data.businesses} onClose={()=>setOpen(null)} onUpd={upd} onDel={delCustomer} flash={flash}/>}
+    {curr&&<Detail c={curr} a={analyze(curr)} businesses={data.businesses} projects={data.projects||[]} onClose={()=>setOpen(null)} onUpd={upd} onDel={delCustomer} onAddProject={addProject} flash={flash}/>}
     {toast&&<div className="toast">{toast}</div>}
   </>;
 }
@@ -419,9 +439,11 @@ function MiniRow({x,onOpen}){return <button className="crow" style={{padding:'9p
 </button>;}
 
 /* ---------- Customers ---------- */
-function Customers({analyzed,data,onOpen}){
+const ST_COLOR={new:'var(--faint)',active:'var(--teal)',following:'var(--gold)',nurture:'var(--violet)',stale:'var(--bad)',won:'var(--ok)',lost:'var(--faint)'};
+function Customers({analyzed,data,projects,onOpen,onDelete,onBulkDelete,onStatus,onBulkStatus,onProject,onBulkProject,onAddProject}){
   const [q,setQ]=useState('');const [biz,setBiz]=useState('');const [stf,setStf]=useState('');
   const [only,setOnly]=useState('');const [showComm,setShowComm]=useState(true);
+  const [sel,setSel]=useState(()=>new Set());
   const list=useMemo(()=>analyzed.filter(({c,a})=>{
     if(q&&!c.name.toLowerCase().includes(q.toLowerCase()))return false;
     if(biz&&c.business!==biz)return false;
@@ -432,6 +454,14 @@ function Customers({analyzed,data,onOpen}){
     return true;
   }).sort((p,r)=>(r.a.needFollow-p.a.needFollow)||(r.a.needPlan-p.a.needPlan)||p.c.name.localeCompare(r.c.name,'th')),
   [analyzed,q,biz,stf,only,showComm]);
+  const ids=list.map(x=>x.c.id);
+  const allSel=ids.length>0&&ids.every(id=>sel.has(id));
+  const toggle=id=>setSel(s=>{const n=new Set(s);n.has(id)?n.delete(id):n.add(id);return n;});
+  const toggleAll=()=>setSel(allSel?new Set():new Set(ids));
+  const clearSel=()=>setSel(new Set());
+  const selArr=()=>[...sel];
+  const handleProj=(id,v)=>{if(v==='__new'){const n=prompt('ชื่อโปรเจกต์ใหม่');if(n&&n.trim())onAddProject(n.trim(),[id]);return;}onProject(id,v);};
+  const handleBulkProj=v=>{if(!v)return;if(v==='__new'){const n=prompt('ชื่อโปรเจกต์ใหม่');if(n&&n.trim())onAddProject(n.trim(),selArr());return;}onBulkProject(selArr(),v);clearSel();};
   return <>
     <input className="inp" placeholder="🔍 ค้นหาชื่อลูกค้า/กลุ่ม…" value={q} onChange={e=>setQ(e.target.value)}/>
     <div className="filters">
@@ -441,25 +471,53 @@ function Customers({analyzed,data,onOpen}){
       <button className={'fchip'+(only==='plan'?' on':'')} onClick={()=>setOnly(only==='plan'?'':'plan')}>⚪ ยังไม่วางแผน</button>
       <button className={'fchip'+(!showComm?' on':'')} onClick={()=>setShowComm(!showComm)}>{showComm?'ซ่อนชุมชน':'แสดงชุมชน'}</button>
     </div>
-    <div className="faint" style={{fontSize:'.82rem',marginTop:10}}>{list.length} ราย</div>
+    <div style={{display:'flex',alignItems:'center',gap:8,marginTop:10}}>
+      <label style={{display:'flex',alignItems:'center',gap:6,fontSize:'.82rem',color:'var(--muted)',cursor:'pointer'}}>
+        <input type="checkbox" className="chk" style={{marginTop:0}} checked={allSel} onChange={toggleAll}/> เลือกทั้งหมด</label>
+      <span className="faint" style={{fontSize:'.82rem',marginLeft:'auto'}}>{list.length} ราย</span>
+    </div>
+    {sel.size>0&&<div className="bulkbar">
+      <span className="lbln">เลือก {sel.size}</span>
+      <select className="minisel" value="" onChange={e=>{if(e.target.value){onBulkStatus(selArr(),e.target.value);clearSel();}}}>
+        <option value="">ตั้งสถานะ…</option>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+      <select className="minisel" value="" onChange={e=>handleBulkProj(e.target.value)}>
+        <option value="">โปรเจกต์…</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}<option value="__new">＋ ใหม่…</option></select>
+      <button className="delbtn" style={{width:'auto',padding:'0 12px'}} onClick={()=>{onBulkDelete(selArr());clearSel();}}>🗑 ลบ {sel.size}</button>
+      <button className="fchip" onClick={clearSel}>ยกเลิก</button>
+    </div>}
     <div className="clist">
-      {list.map(x=><CustomerRow key={x.c.id} x={x} onOpen={onOpen}/>)}
+      {list.map(x=><CustomerRow key={x.c.id} x={x} projects={projects} selected={sel.has(x.c.id)} onToggle={toggle} onOpen={onOpen} onStatus={onStatus} onProject={handleProj} onDelete={onDelete}/>)}
       {!list.length&&<div className="empty">ไม่พบลูกค้าตามเงื่อนไข</div>}
     </div>
   </>;
 }
-function CustomerRow({x,onOpen}){const {c,a}=x;return <button className="crow" onClick={()=>onOpen(c.id)}>
-  <div style={{minWidth:0}}>
-    <div className="nm">{c.name}{c.verify&&<span title="ชื่ออ่านไม่ชัด ให้ตรวจ" style={{color:'var(--warn)'}}> ⚠</span>}</div>
-    <div className="meta"><span className="biz">{c.business}</span><Pill status={c.status}/>{c.members!=null&&<span className="faint" style={{fontSize:'.74rem'}}>👥 {c.members}</span>}{c.type==='community'&&<span className="faint" style={{fontSize:'.72rem'}}>ชุมชน</span>}</div>
-    {c.next_action&&<div className="na">▶ <b>{c.next_action}</b>{c.next_action_date&&' · '+thDate(c.next_action_date)}</div>}
-  </div>
-  <div className="right"><DaysFlag a={a}/>
-    {a.bucket==='overdue'&&<span className="daysflag flag-bad">ค้างตาม</span>}
-    {a.bucket==='today'&&<span className="daysflag flag-warn">ถึงกำหนดวันนี้</span>}
-    {a.needPlan&&<span className="faint" style={{fontSize:'.72rem'}}>ยังไม่วางแผน</span>}
-  </div>
-</button>;}
+function CustomerRow({x,projects,selected,onToggle,onOpen,onStatus,onProject,onDelete}){
+  const {c,a}=x;
+  return <div className={'crow'+(selected?' sel':'')}>
+    <input type="checkbox" className="chk" checked={selected} onChange={()=>onToggle(c.id)}/>
+    <div className="cmain" onClick={()=>onOpen(c.id)}>
+      <div className="nm">{c.name}{c.verify&&<span title="ชื่ออ่านไม่ชัด ให้ตรวจ" style={{color:'var(--warn)'}}> ⚠</span>}</div>
+      <div className="meta">
+        <span className="biz">{c.business}</span>
+        {c.project_id&&<span className="biz" style={{color:'var(--violet)'}}>🗂️ {projName(projects,c.project_id)}</span>}
+        {c.members!=null&&<span className="faint" style={{fontSize:'.74rem'}}>👥 {c.members}</span>}
+        {c.type==='community'&&<span className="faint" style={{fontSize:'.72rem'}}>ชุมชน</span>}
+        <DaysFlag a={a}/>
+        {a.bucket==='overdue'&&<span className="daysflag flag-bad">ค้างตาม</span>}
+        {a.bucket==='today'&&<span className="daysflag flag-warn">วันนี้</span>}
+        {a.needPlan&&<span className="faint" style={{fontSize:'.72rem'}}>ยังไม่วางแผน</span>}
+      </div>
+      {c.next_action&&<div className="na">▶ <b>{c.next_action}</b>{c.next_action_date&&' · '+thDate(c.next_action_date)}</div>}
+    </div>
+    <div className="cact" onClick={e=>e.stopPropagation()}>
+      <select className="minisel" style={{borderLeftColor:ST_COLOR[c.status]}} value={c.status} onChange={e=>onStatus(c.id,e.target.value)}>
+        {STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+      <select className="minisel" value={c.project_id||''} onChange={e=>onProject(c.id,e.target.value)}>
+        <option value="">— โปรเจกต์ —</option>{projects.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}<option value="__new">＋ ใหม่…</option></select>
+      <button className="delbtn" title="ลบลูกค้านี้" onClick={()=>onDelete(c.id)}>🗑</button>
+    </div>
+  </div>;
+}
 
 /* ---------- Todo ---------- */
 function Todo({analyzed,onOpen}){
@@ -491,7 +549,7 @@ function AddSheet({businesses,onClose,onAdd}){
 }
 
 /* ---------- Detail ---------- */
-function Detail({c,a,businesses,onClose,onUpd,onDel,flash}){
+function Detail({c,a,businesses,projects,onClose,onUpd,onDel,onAddProject,flash}){
   const [note,setNote]=useState('');const [chan,setChan]=useState('LINE');
   const [na,setNa]=useState(c.next_action||'');const [nad,setNad]=useState(c.next_action_date||'');
   const saveNote=()=>{if(!note.trim())return;const n={date:todayISO(),channel:chan,summary:note.trim(),by:'Toni'};
@@ -504,6 +562,11 @@ function Detail({c,a,businesses,onClose,onUpd,onDel,flash}){
 
     <label className="lbl">Business</label>
     <select className="inp" style={{width:'100%'}} value={c.business} onChange={e=>onUpd(c.id,{business:e.target.value})}>{businesses.map(b=><option key={b}>{b}</option>)}{!businesses.includes(c.business)&&<option>{c.business}</option>}</select>
+
+    <label className="lbl">โปรเจกต์</label>
+    <select className="inp" style={{width:'100%'}} value={c.project_id||''} onChange={e=>{const v=e.target.value;if(v==='__new'){const n=prompt('ชื่อโปรเจกต์ใหม่');if(n&&n.trim())onAddProject(n.trim(),[c.id]);return;}onUpd(c.id,{project_id:v||null});}}>
+      <option value="">— ไม่มี —</option>{(projects||[]).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}<option value="__new">＋ โปรเจกต์ใหม่…</option>
+    </select>
 
     <div style={{height:1,background:'var(--border)',margin:'16px 0'}}></div>
 
