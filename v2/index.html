@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="th" class="">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>EuneunCRM · v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: { extend: {
+    colors: {
+      gold:{DEFAULT:'#C8A84B',light:'#E6B84B',deep:'#9A7A2B',soft:'#F5D67A'},
+      teal:{DEFAULT:'#14B8A6',light:'#2DD4BF'},
+      violet:{DEFAULT:'#7C5CFC',light:'#A78BFA'},
+      ink:{900:'#0D0D14',800:'#12121E',700:'#1A1A2A',600:'#232336'},
+    },
+    fontFamily:{ sans:["'IBM Plex Sans Thai'","Inter","system-ui","sans-serif"], display:["'Space Grotesk'","sans-serif"] },
+  }},
+};
+</script>
+<style type="text/tailwindcss">
+  @layer base{ body{ @apply font-sans; } }
+  @layer components{
+    .glass{ @apply rounded-2xl border border-black/[0.06] dark:border-white/10 bg-white/70 dark:bg-white/[0.045] backdrop-blur-xl shadow-[0_8px_30px_rgba(20,20,40,0.07)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.45)]; }
+    .glass-soft{ @apply rounded-xl border border-black/[0.05] dark:border-white/[0.08] bg-white/55 dark:bg-white/[0.03] backdrop-blur-md; }
+    .seg-btn{ @apply px-2.5 py-1 rounded-full text-xs font-semibold text-slate-500 dark:text-slate-400 transition; }
+    .seg-btn.on{ @apply bg-white dark:bg-ink-700 text-slate-800 dark:text-white shadow; }
+    .ico{ @apply w-[18px] h-[18px] stroke-[2] shrink-0; }
+  }
+</style>
+<style>
+  :root{ color-scheme: light dark; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ background:
+    radial-gradient(60vw 48vw at 100% -8%, rgba(230,184,75,.13), transparent 60%),
+    radial-gradient(56vw 48vw at -8% 108%, rgba(124,92,252,.12), transparent 60%),
+    #FAF7EF; min-height:100vh; }
+  html.dark body{ background:
+    radial-gradient(60vw 48vw at 100% -8%, rgba(230,184,75,.10), transparent 60%),
+    radial-gradient(56vw 48vw at -8% 108%, rgba(124,92,252,.13), transparent 60%),
+    #0D0D14; }
+  ::-webkit-scrollbar{width:9px;height:9px} ::-webkit-scrollbar-thumb{background:rgba(120,120,140,.35);border-radius:99px}
+  .font-display{font-family:'Space Grotesk',sans-serif}
+  @keyframes pulseRing{0%{box-shadow:0 0 0 0 rgba(248,113,113,.45)}70%{box-shadow:0 0 0 7px rgba(248,113,113,0)}100%{box-shadow:0 0 0 0 rgba(248,113,113,0)}}
+  .pulse-bad{animation:pulseRing 2s infinite}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body class="text-slate-800 dark:text-slate-100">
+<div id="root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel-src" id="appsrc">
+const {useState,useEffect,useMemo,useRef} = React;
+const LS='crm_data_v1', PINK='crm_pin'; // ใช้ key เดียวกับ v1 → ข้อมูล/PIN ร่วมกัน
+
+/* ---------- Supabase (เดียวกับ v1 · PIN-gated RPC) ---------- */
+const SB_URL='https://xbrpbamohxtspjbkavuv.supabase.co';
+const SB_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhicnBiYW1vaHh0c3BqYmthdnV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2MDQ4NzQsImV4cCI6MjA4OTE4MDg3NH0.j0ftHZW2DnfwhJJpooA8Hr63fSSzCQBxy3Rh41HAqwk';
+const sb=window.supabase?window.supabase.createClient(SB_URL,SB_ANON):null;
+async function cloudList(pin){const {data,error}=await sb.rpc('crm_list',{p:pin});if(error)throw new Error(error.message||'err');return (data||[]).map((r,i)=>normalize(r.data,i));}
+async function cloudUpsert(pin,c){const {error}=await sb.rpc('crm_upsert',{p:pin,cid:c.id,d:c});if(error)throw new Error(error.message||'err');}
+async function cloudDelete(pin,id){const {error}=await sb.rpc('crm_delete',{p:pin,cid:id});if(error)throw new Error(error.message||'err');}
+async function cloudGetApp(pin,key){const {data,error}=await sb.rpc('crm_get_app',{p:pin,key});if(error)throw new Error(error.message||'err');return data;}
+async function cloudSetApp(pin,key,val){const {error}=await sb.rpc('crm_set_app',{p:pin,key,val});if(error)throw new Error(error.message||'err');}
+
+/* ---------- date helpers ---------- */
+const pad=n=>String(n).padStart(2,'0');
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function addDaysISO(iso,n){const d=new Date(iso+'T00:00:00');d.setDate(d.getDate()+n);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function daysBetween(a,b){return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);}
+const TH_MON=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function thDate(iso){if(!iso)return '';const d=new Date(iso+'T00:00:00');return d.getDate()+' '+TH_MON[d.getMonth()]+' '+((d.getFullYear()+543)%100);}
+
+/* ---------- status / engine ---------- */
+const STATUSES=[
+ {id:'new',label:'ยังไม่จัด',hex:'#94a3b8',bucket:'seed'},
+ {id:'active',label:'กำลังคุย',hex:'#14B8A6',bucket:'active'},
+ {id:'following',label:'กำลังตาม',hex:'#E6B84B',bucket:'active'},
+ {id:'followup',label:'ติดตาม',hex:'#0EA5E9',bucket:'active'},
+ {id:'nurture',label:'ดูแลยาว',hex:'#A78BFA',bucket:'active'},
+ {id:'stale',label:'ค้าง/หาย',hex:'#F87171',bucket:'alert'},
+ {id:'won',label:'ปิดได้',hex:'#22C55E',bucket:'closed'},
+ {id:'lost',label:'พัก/ปิด',hex:'#64748B',bucket:'closed'},
+];
+const stMeta=id=>STATUSES.find(s=>s.id===id)||STATUSES[0];
+const CHANNELS=['LINE','โทร','เจอตัว','อื่นๆ'];
+const THRESH={default:14,nurture:30};
+function analyze(c){
+  const today=todayISO();const st=stMeta(c.status);const closed=st.bucket==='closed';
+  const days=c.last_contact_at?daysBetween(c.last_contact_at,today):null;
+  const hasPlan=!!(c.next_action&&c.next_action.trim());
+  let bucket='ok';
+  if(closed)bucket='closed';
+  else if(hasPlan&&c.next_action_date){
+    if(c.next_action_date<today)bucket='overdue';
+    else if(c.next_action_date===today)bucket='today';
+    else if(c.next_action_date<=addDaysISO(today,7))bucket='soon';
+    else bucket='planned';
+  } else if(hasPlan)bucket='planned';
+  else{const thr=c.status==='nurture'?THRESH.nurture:THRESH.default;bucket=(days!==null&&days>thr)?'going-cold':'no-plan';}
+  return {days,bucket,closed,hasPlan,needFollow:['overdue','today','going-cold'].includes(bucket),needPlan:!hasPlan&&!closed};
+}
+const SEV={overdue:0,today:1,'going-cold':2,soon:3,'no-plan':4,planned:5,ok:6,closed:7};
+
+/* ---------- data ---------- */
+function normalize(c,i){return {
+  id:c.id||('c'+i+'-'+Math.random().toString(36).slice(2,6)),
+  name:c.name||'(ไม่มีชื่อ)',members:c.members??null,source:c.source||'LINE Group',
+  business:c.business||'Other',type:c.type||'customer',status:c.status||'new',
+  owner:c.owner||'Toni',last_contact_at:c.last_contact_at||null,
+  next_action:c.next_action||'',next_action_date:c.next_action_date||null,
+  won_at:c.won_at||null,tags:c.tags||[],notes:c.notes||[],verify:!!c.verify,project_id:c.project_id||null,
+};}
+function loadLocal(){try{const r=localStorage.getItem(LS);if(r){const d=JSON.parse(r);return {businesses:d.businesses||['UP Wellness','AI','Me & Mia','Other'],projects:d.projects||[],customers:(d.customers||[]).map(normalize)};}}catch(e){}
+  return {businesses:['UP Wellness','AI','Me & Mia','Other'],projects:[],customers:[]};}
+
+/* ---------- icons (Lucide-style inline SVG) ---------- */
+const PATHS={
+  bolt:'M13 2L3 14h7l-1 8 10-12h-7z', users:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2|M9 7a4 4 0 1 0 0 .01|M23 21v-2a4 4 0 0 0-3-3.87|M16 3.13a4 4 0 0 1 0 7.75',
+  flame:'M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z',
+  clock:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z|M12 6v6l4 2',
+  check:'M20 6 9 17l-5-5', plus:'M12 5v14|M5 12h14', search:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z|M21 21l-4.3-4.3',
+  trash:'M3 6h18|M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2', x:'M18 6 6 18|M6 6l12 12',
+  target:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z|M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z|M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+  trophy:'M6 9H4.5a2.5 2.5 0 0 1 0-5H6|M18 9h1.5a2.5 2.5 0 0 0 0-5H18|M4 22h16|M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22|M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22|M18 2H6v7a6 6 0 0 0 12 0V2z',
+  cal:'M8 2v4|M16 2v4|M3 10h18|M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z',
+  snooze:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z|M12 7v5l3 2', chev:'M9 18l6-6-6-6',
+  edit:'M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7|M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z',
+  lock:'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z|M7 11V7a5 5 0 0 1 10 0v4',
+  up:'M12 19V5|M5 12l7-7 7 7', down:'M12 5v14|M19 12l-7 7-7-7', grid:'M3 3h7v7H3z|M14 3h7v7h-7z|M14 14h7v7h-7z|M3 14h7v7H3z',
+  layers:'M12 2 2 7l10 5 10-5-10-5z|M2 17l10 5 10-5|M2 12l10 5 10-5',
+};
+function Icon({name,className}){const segs=(PATHS[name]||'').split('|');return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={(className||'')+' ico'}>{segs.map((d,i)=><path key={i} d={d}/>)}</svg>;}
+
+/* ---------- bits ---------- */
+function Pill({status,sm}){const s=stMeta(status);return <span className={(sm?'text-[11px] px-2 py-0.5':'text-xs px-2.5 py-0.5')+' rounded-full font-semibold whitespace-nowrap'} style={{background:s.hex+'22',color:s.hex,border:'1px solid '+s.hex+'55'}}>{s.label}</span>;}
+function Days({a}){if(a.closed)return null;if(a.days===null)return <span className="text-[11px] text-slate-400">ยังไม่เคยคุย</span>;
+  const c=a.days>30?'#F87171':a.days>14?'#D97706':'#94a3b8';return <span className="text-[11px] font-semibold" style={{color:c}}>หาย {a.days} วัน</span>;}
+
+/* ---------- charts ---------- */
+function Donut({segs,total}){
+  const R=54,C=2*Math.PI*R;let off=0;const t=total||segs.reduce((s,d)=>s+d.value,0)||1;
+  return <svg viewBox="0 0 140 140" className="w-32 h-32">
+    <circle cx="70" cy="70" r={R} fill="none" strokeWidth="16" className="stroke-black/[0.06] dark:stroke-white/[0.07]"/>
+    <g transform="rotate(-90 70 70)">{segs.filter(d=>d.value>0).map((d,i)=>{const len=d.value/t*C;const el=<circle key={i} cx="70" cy="70" r={R} fill="none" stroke={d.hex} strokeWidth="16" strokeLinecap="round" strokeDasharray={`${Math.max(len-2,0)} ${C-Math.max(len-2,0)}`} strokeDashoffset={-off}/>;off+=len;return el;})}</g>
+    <text x="70" y="68" textAnchor="middle" className="fill-current font-display" fontSize="24" fontWeight="700">{t}</text>
+    <text x="70" y="86" textAnchor="middle" className="fill-current opacity-40" fontSize="10">ลูกค้า</text>
+  </svg>;
+}
+function Pipeline({cnt,onPick}){
+  const stages=[['new','ยังไม่จัด'],['active','กำลังคุย'],['following','กำลังตาม'],['followup','ติดตาม'],['nurture','ดูแลยาว'],['won','ปิดได้']];
+  const max=Math.max(1,...stages.map(([id])=>cnt[id]||0));
+  return <div className="space-y-2">{stages.map(([id,lb])=>{const v=cnt[id]||0,s=stMeta(id);return (
+    <button key={id} onClick={()=>onPick(id)} className="w-full flex items-center gap-3 group">
+      <span className="w-16 text-right text-xs text-slate-500 dark:text-slate-400 shrink-0">{lb}</span>
+      <span className="flex-1 h-5 rounded-full bg-black/[0.05] dark:bg-white/[0.05] overflow-hidden">
+        <span className="block h-full rounded-full transition-all group-hover:brightness-110" style={{width:Math.max(v/max*100,v?7:0)+'%',background:`linear-gradient(90deg,${s.hex}cc,${s.hex})`}}></span></span>
+      <span className="w-7 text-right font-display font-semibold text-sm">{v}</span>
+    </button>);})}</div>;
+}
+
+/* ===================== App ===================== */
+function App(){
+  const [data,setData]=useState(loadLocal);
+  const [pin,setPin]=useState(()=>{try{return localStorage.getItem(PINK)||'';}catch(e){return '';}});
+  const [phase,setPhase]=useState(sb?(pin?'loading':'gate'):'ready');
+  const [sync,setSync]=useState('');
+  const [view,setView]=useState('overview'); // overview | customers
+  const [open,setOpen]=useState(null);
+  const [custFilter,setCustFilter]=useState({status:'',biz:'',only:'',q:''});
+  const [toast,setToast]=useState('');
+  const pinRef=useRef(pin);useEffect(()=>{pinRef.current=pin;},[pin]);
+
+  useEffect(()=>{try{localStorage.setItem(LS,JSON.stringify(data));}catch(e){}},[data]);
+  useEffect(()=>{ // theme + font
+    const root=document.documentElement,mq=matchMedia('(prefers-color-scheme: dark)');
+    const apply=p=>root.classList.toggle('dark',p==='dark'||(p==='auto'&&mq.matches));
+    apply(localStorage.getItem('crm_theme')||'auto');
+    root.style.fontSize=(localStorage.getItem('crm_fz')||'16')+'px';
+    const h=()=>{if((localStorage.getItem('crm_theme')||'auto')==='auto')apply('auto');};
+    mq.addEventListener&&mq.addEventListener('change',h);return()=>mq.removeEventListener&&mq.removeEventListener('change',h);
+  },[]);
+  useEffect(()=>{if(sb&&pin)loadCloud(pin);},[]); // eslint-disable-line
+  const flash=m=>{setToast(m);setTimeout(()=>setToast(''),2200);};
+
+  async function loadCloud(p){setPhase('loading');try{
+    const rows=await cloudList(p);setData(d=>({...d,customers:rows}));setSync('cloud');setPhase('ready');
+    try{const pr=await cloudGetApp(p,'projects');if(Array.isArray(pr))setData(d=>({...d,projects:pr}));}catch(_){}
+  }catch(e){ if((e.message||'').toLowerCase().includes('unauthorized')){try{localStorage.removeItem(PINK);}catch(_){}setPin('');setSync('');setPhase('gate');flash('PIN ไม่ถูก');}
+    else{setSync('off');setPhase('ready');flash('ออฟไลน์ — ใช้ข้อมูลในเครื่อง');}}}
+  function submitPin(p){if(!p)return;try{localStorage.setItem(PINK,p);}catch(e){}setPin(p);loadCloud(p);}
+  function lock(){try{localStorage.removeItem(PINK);}catch(e){}setPin('');setSync('');setPhase('gate');}
+  function pushCloud(c){if(sb&&pinRef.current)cloudUpsert(pinRef.current,c).then(()=>setSync('cloud')).catch(()=>setSync('err'));}
+
+  const analyzed=useMemo(()=>data.customers.map(c=>({c,a:analyze(c)})),[data]);
+  const upd=(id,patch)=>setData(d=>{const customers=d.customers.map(c=>c.id===id?{...c,...patch}:c);pushCloud(customers.find(c=>c.id===id));return {...d,customers};});
+  const del=id=>{if(sb&&pinRef.current)cloudDelete(pinRef.current,id).catch(()=>{});setData(d=>({...d,customers:d.customers.filter(c=>c.id!==id)}));setOpen(null);flash('ลบแล้ว');};
+  const bulkDelete=ids=>{if(!ids.length||!confirm('ลบ '+ids.length+' คน?'))return;ids.forEach(id=>{if(sb&&pinRef.current)cloudDelete(pinRef.current,id).catch(()=>{});});setData(d=>({...d,customers:d.customers.filter(c=>!ids.includes(c.id))}));flash('ลบ '+ids.length+' คน');};
+  const bulkUpdate=(ids,patch)=>{const s=new Set(ids);setData(d=>({...d,customers:d.customers.map(c=>{if(!s.has(c.id))return c;const nc={...c,...patch};if(patch.status==='won'&&!c.won_at)nc.won_at=todayISO();pushCloud(nc);return nc;})}));};
+  const setStatus=(id,s)=>upd(id,s==='won'?{status:s,won_at:todayISO()}:{status:s});
+  const logTouch=(id,summary)=>{const c=data.customers.find(x=>x.id===id);if(!c)return;const note={date:todayISO(),channel:'LINE',summary:summary||(c.next_action||'ติดตาม'),by:'Toni'};upd(id,{notes:[note,...(c.notes||[])],last_contact_at:todayISO(),next_action:'',next_action_date:null});flash('บันทึกว่าติดตามแล้ว ✓');};
+  const snooze=(id,n)=>{const c=data.customers.find(x=>x.id===id);if(!c)return;const base=c.next_action_date&&c.next_action_date>=todayISO()?c.next_action_date:todayISO();upd(id,{next_action_date:addDaysISO(base,n),next_action:c.next_action||'ติดตาม'});flash('เลื่อน '+n+' วัน');};
+  const addProject=(name,assignIds)=>{const np={id:'p'+Date.now().toString(36),name};setData(d=>{const projects=[...(d.projects||[]),np];if(sb&&pinRef.current)cloudSetApp(pinRef.current,'projects',projects).catch(()=>{});let customers=d.customers;if(assignIds&&assignIds.length){customers=d.customers.map(c=>assignIds.includes(c.id)?{...c,project_id:np.id}:c);assignIds.forEach(id=>pushCloud(customers.find(c=>c.id===id)));}return {...d,projects,customers};});flash('เพิ่มโปรเจกต์');};
+  const gotoStatus=sid=>{setCustFilter({status:sid,biz:'',only:'',q:''});setView('customers');};
+  const gotoFollow=()=>{setCustFilter({status:'',biz:'',only:'follow',q:''});setView('customers');};
+
+  const curr=open&&data.customers.find(c=>c.id===open);
+
+  if(phase==='gate')return <Gate onSubmit={submitPin}/>;
+  if(phase==='loading')return <Splash/>;
+  return <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-24">
+    <Topbar view={view} setView={setView} sync={sync} onLock={sb?lock:null}/>
+    {view==='overview'
+      ? <Overview analyzed={analyzed} onOpen={setOpen} onPickStatus={gotoStatus} onFollow={gotoFollow} onLog={logTouch} onSnooze={snooze}/>
+      : <Customers analyzed={analyzed} data={data} filter={custFilter} setFilter={setCustFilter} onOpen={setOpen}
+          onSetStatus={setStatus} onDelete={id=>{if(confirm('ลบลูกค้านี้?'))del(id);}} onBulkDelete={bulkDelete}
+          onBulkStatus={(ids,s)=>bulkUpdate(ids,{status:s})} onProject={(id,p)=>upd(id,{project_id:p||null})} onAddProject={addProject}/>}
+    {curr&&<Detail c={curr} a={analyze(curr)} data={data} onClose={()=>setOpen(null)} onUpd={upd} onDel={del} onAddProject={addProject} onLog={logTouch}/>}
+    {toast&&<div className="fixed left-1/2 -translate-x-1/2 bottom-6 z-50 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-4 py-2.5 rounded-xl text-sm font-semibold shadow-2xl">{toast}</div>}
+  </div>;
+}
+
+/* ---------- Topbar ---------- */
+function Topbar({view,setView,sync,onLock}){
+  const root=document.documentElement;
+  const [th,setTh]=useState(localStorage.getItem('crm_theme')||'auto');
+  const [fz,setFz]=useState(localStorage.getItem('crm_fz')||'16');
+  const setTheme=p=>{const mq=matchMedia('(prefers-color-scheme: dark)');root.classList.toggle('dark',p==='dark'||(p==='auto'&&mq.matches));localStorage.setItem('crm_theme',p);setTh(p);};
+  const setFont=p=>{root.style.fontSize=p+'px';localStorage.setItem('crm_fz',p);setFz(p);};
+  const SyncDot={cloud:['☁︎','text-teal'],off:['⚠','text-amber-500'],err:['⚠','text-red-400']}[sync];
+  return <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 mb-5 backdrop-blur-xl bg-white/60 dark:bg-ink-900/60 border-b border-black/[0.06] dark:border-white/[0.08]">
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-2.5 font-display font-bold text-lg">
+        <span className="w-7 h-7 rounded-lg shrink-0" style={{background:'linear-gradient(135deg,#E6B84B,#14B8A6,#7C5CFC)'}}></span>
+        EuneunCRM <span className="text-[10px] font-sans font-bold px-1.5 py-0.5 rounded bg-gold/20 text-gold-deep dark:text-gold-soft">v2</span>
+      </div>
+      <div className="hidden sm:flex bg-black/[0.05] dark:bg-white/[0.06] rounded-full p-0.5 ml-1">
+        <button className={'seg-btn '+(view==='overview'?'on':'')} onClick={()=>setView('overview')}>ภาพรวม</button>
+        <button className={'seg-btn '+(view==='customers'?'on':'')} onClick={()=>setView('customers')}>ลูกค้า</button>
+      </div>
+      <div className="flex-1"></div>
+      {SyncDot&&<span className={'text-xs font-semibold '+SyncDot[1]} title="ซิงค์คลาวด์">{SyncDot[0]}</span>}
+      <div className="flex bg-black/[0.05] dark:bg-white/[0.06] rounded-full p-0.5">
+        {[['14.5','A−'],['16','A'],['17.5','A+']].map(([v,l])=><button key={v} className={'seg-btn '+(fz===v?'on':'')} onClick={()=>setFont(v)}>{l}</button>)}</div>
+      <div className="flex bg-black/[0.05] dark:bg-white/[0.06] rounded-full p-0.5">
+        {[['auto','A'],['light','☀'],['dark','☾']].map(([v,l])=><button key={v} className={'seg-btn '+(th===v?'on':'')} onClick={()=>setTheme(v)}>{l}</button>)}</div>
+      {onLock&&<button className="seg-btn bg-black/[0.05] dark:bg-white/[0.06]" onClick={onLock} title="ล็อก"><Icon name="lock" className="w-4 h-4"/></button>}
+    </div>
+    <div className="sm:hidden flex bg-black/[0.05] dark:bg-white/[0.06] rounded-full p-0.5 mt-2 w-max">
+      <button className={'seg-btn '+(view==='overview'?'on':'')} onClick={()=>setView('overview')}>ภาพรวม</button>
+      <button className={'seg-btn '+(view==='customers'?'on':'')} onClick={()=>setView('customers')}>ลูกค้า</button>
+    </div>
+  </div>;
+}
+
+/* ---------- Overview ---------- */
+function KpiCard({icon,n,label,tone,onClick}){
+  const tones={bad:'text-red-500',gold:'text-gold-deep dark:text-gold-soft',teal:'text-teal',ok:'text-green-500',slate:''};
+  return <button onClick={onClick} disabled={!onClick} className={"glass p-4 text-left "+(onClick?'hover:border-gold/50 transition cursor-pointer':'cursor-default')}>
+    <div className="flex items-center gap-2 text-slate-400"><Icon name={icon}/><span className="text-xs">{label}</span></div>
+    <div className={"font-display text-3xl font-bold mt-1 "+(tones[tone]||'')}>{n}</div>
+  </button>;
+}
+function Overview({analyzed,onOpen,onPickStatus,onFollow,onLog,onSnooze}){
+  const total=analyzed.length;
+  const cnt={};analyzed.forEach(x=>{cnt[x.c.status]=(cnt[x.c.status]||0)+1;});
+  const active=analyzed.filter(x=>stMeta(x.c.status).bucket==='active').length;
+  const follow=analyzed.filter(x=>x.a.needFollow);
+  const noPlan=analyzed.filter(x=>x.a.needPlan);
+  const ym=todayISO().slice(0,7);
+  const wonM=analyzed.filter(x=>x.c.status==='won'&&(x.c.won_at||'').slice(0,7)===ym).length;
+  const segs=STATUSES.map(s=>({hex:s.hex,value:cnt[s.id]||0,label:s.label}));
+  const queue=[...follow].sort((p,q)=>SEV[p.a.bucket]-SEV[q.a.bucket]||(q.a.days||0)-(p.a.days||0));
+  return <div className="space-y-5">
+    {/* KPIs */}
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <KpiCard icon="users" n={total} label="ลูกค้าทั้งหมด" tone="slate"/>
+      <KpiCard icon="bolt" n={active} label="Active" tone="teal"/>
+      <KpiCard icon="flame" n={follow.length} label="ต้องตามวันนี้" tone="bad" onClick={onFollow}/>
+      <KpiCard icon="target" n={noPlan.length} label="ยังไม่วางแผน" tone="gold" onClick={()=>onPickStatus('')}/>
+      <KpiCard icon="trophy" n={wonM} label="ปิดได้เดือนนี้" tone="ok"/>
+    </div>
+    {/* charts */}
+    <div className="grid lg:grid-cols-2 gap-4">
+      <div className="glass p-5">
+        <h3 className="font-display font-semibold mb-1 flex items-center gap-2"><Icon name="layers" className="text-violet"/> สถานะลูกค้า</h3>
+        <div className="flex items-center gap-5 mt-2">
+          <Donut segs={segs} total={total}/>
+          <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-1.5">
+            {STATUSES.map(s=>(<button key={s.id} onClick={()=>onPickStatus(s.id)} className="flex items-center gap-2 text-left hover:opacity-70 transition">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{background:s.hex}}></span>
+              <span className="text-xs flex-1 truncate">{s.label}</span>
+              <span className="text-xs font-semibold tabular-nums">{cnt[s.id]||0}</span></button>))}
+          </div>
+        </div>
+      </div>
+      <div className="glass p-5">
+        <h3 className="font-display font-semibold mb-3 flex items-center gap-2"><Icon name="target" className="text-teal"/> Pipeline <span className="text-xs font-sans font-normal text-slate-400">(แตะเพื่อกรอง)</span></h3>
+        <Pipeline cnt={cnt} onPick={onPickStatus}/>
+      </div>
+    </div>
+    {/* TODAY QUEUE — พระเอก */}
+    <div className="glass p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-display font-semibold flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-red-500 pulse-bad"></span> ต้องตามวันนี้ <span className="text-slate-400 text-sm font-sans font-normal">({queue.length})</span></h3>
+        {queue.length>0&&<button onClick={onFollow} className="text-xs text-gold-deep dark:text-gold-soft font-semibold flex items-center gap-1">ดูทั้งหมด <Icon name="chev" className="w-3.5 h-3.5"/></button>}
+      </div>
+      {queue.length? <div className="space-y-2">{queue.slice(0,8).map(x=><QueueRow key={x.c.id} x={x} onOpen={onOpen} onLog={onLog} onSnooze={onSnooze}/>)}</div>
+        : <div className="text-center py-8 text-slate-400 text-sm">เคลียร์หมดแล้ว ไม่มีใครค้างตาม 🎉<br/><span className="text-xs">ไปตั้งแผนให้กลุ่ม "ยังไม่วางแผน" ({noPlan.length}) ได้เลย</span></div>}
+    </div>
+  </div>;
+}
+function QueueRow({x,onOpen,onLog,onSnooze}){const {c,a}=x;
+  const tag=a.bucket==='overdue'?['ค้างตาม','bg-red-500/15 text-red-500']:a.bucket==='today'?['วันนี้','bg-amber-500/15 text-amber-600']:['หายนาน','bg-amber-400/15 text-amber-500'];
+  return <div className="glass-soft p-3 flex items-center gap-3">
+    <button className="flex-1 min-w-0 text-left" onClick={()=>onOpen(c.id)}>
+      <div className="flex items-center gap-2"><span className="font-semibold text-sm truncate">{c.name}</span><Pill status={c.status} sm/></div>
+      <div className="flex items-center gap-2 mt-1 flex-wrap">
+        <span className={"text-[10px] px-1.5 py-0.5 rounded font-semibold "+tag[1]}>{tag[0]}</span>
+        {c.next_action&&<span className="text-xs text-slate-500 dark:text-slate-400 truncate">▶ {c.next_action}{c.next_action_date&&' · '+thDate(c.next_action_date)}</span>}
+        {!c.next_action&&<Days a={a}/>}
+      </div>
+    </button>
+    <button onClick={()=>onLog(c.id)} title="ติดตามแล้ว" className="w-9 h-9 rounded-lg grid place-items-center bg-green-500/12 text-green-600 hover:bg-green-500/20 transition shrink-0"><Icon name="check"/></button>
+    <button onClick={()=>onSnooze(c.id,3)} title="เลื่อน 3 วัน" className="w-9 h-9 rounded-lg grid place-items-center bg-black/[0.05] dark:bg-white/[0.07] text-slate-500 hover:text-slate-800 dark:hover:text-white transition shrink-0"><Icon name="snooze"/></button>
+  </div>;
+}
+
+/* ---------- Customers ---------- */
+function Customers({analyzed,data,filter,setFilter,onOpen,onSetStatus,onDelete,onBulkDelete,onBulkStatus,onProject,onAddProject}){
+  const f=filter;const set=p=>setFilter({...f,...p});
+  const [sel,setSel]=useState(()=>new Set());
+  const list=useMemo(()=>analyzed.filter(({c,a})=>{
+    if(f.q&&!c.name.toLowerCase().includes(f.q.toLowerCase()))return false;
+    if(f.biz&&c.business!==f.biz)return false;
+    if(f.status&&c.status!==f.status)return false;
+    if(f.only==='follow'&&!a.needFollow)return false;
+    if(f.only==='plan'&&!a.needPlan)return false;
+    return true;
+  }).sort((p,r)=>(r.a.needFollow-p.a.needFollow)||(r.a.needPlan-p.a.needPlan)||p.c.name.localeCompare(r.c.name,'th')),[analyzed,f]);
+  const ids=list.map(x=>x.c.id),allSel=ids.length>0&&ids.every(i=>sel.has(i));
+  const toggle=i=>setSel(s=>{const n=new Set(s);n.has(i)?n.delete(i):n.add(i);return n;});
+  const clear=()=>setSel(new Set());
+  const handleProj=(id,v)=>{if(v==='__new'){const n=prompt('ชื่อโปรเจกต์ใหม่');if(n&&n.trim())onAddProject(n.trim(),[id]);return;}onProject(id,v);};
+  const projName=id=>(data.projects||[]).find(p=>p.id===id)?.name;
+  return <div className="space-y-4">
+    <div className="glass p-3 flex flex-wrap items-center gap-2">
+      <div className="relative flex-1 min-w-[180px]">
+        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"/>
+        <input className="w-full pl-9 pr-3 py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] text-sm focus:outline-none focus:ring-2 ring-gold/40" placeholder="ค้นหาชื่อ…" value={f.q} onChange={e=>set({q:e.target.value})}/>
+      </div>
+      <select className="px-3 py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] text-sm" value={f.biz} onChange={e=>set({biz:e.target.value})}><option value="">ทุก Business</option>{data.businesses.map(b=><option key={b} value={b}>{b}</option>)}</select>
+      <select className="px-3 py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] text-sm" value={f.status} onChange={e=>set({status:e.target.value})}><option value="">ทุกสถานะ</option>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+      <button className={"px-3 py-2 rounded-xl text-sm font-semibold transition "+(f.only==='follow'?'bg-red-500/15 text-red-500':'bg-black/[0.04] dark:bg-white/[0.05] text-slate-500')} onClick={()=>set({only:f.only==='follow'?'':'follow'})}>ต้องตาม</button>
+      <button className={"px-3 py-2 rounded-xl text-sm font-semibold transition "+(f.only==='plan'?'bg-gold/20 text-gold-deep dark:text-gold-soft':'bg-black/[0.04] dark:bg-white/[0.05] text-slate-500')} onClick={()=>set({only:f.only==='plan'?'':'plan'})}>ยังไม่วางแผน</button>
+    </div>
+    <div className="flex items-center gap-3 px-1">
+      <label className="flex items-center gap-2 text-sm text-slate-500 cursor-pointer"><input type="checkbox" className="w-4 h-4 accent-gold" checked={allSel} onChange={()=>setSel(allSel?new Set():new Set(ids))}/> เลือกทั้งหมด</label>
+      <span className="text-sm text-slate-400 ml-auto">{list.length} ราย</span>
+    </div>
+    {sel.size>0&&<div className="glass p-3 flex flex-wrap items-center gap-2 sticky top-[68px] z-20" style={{borderColor:'#C8A84B'}}>
+      <span className="font-semibold text-sm text-gold-deep dark:text-gold-soft">เลือก {sel.size}</span>
+      <select className="px-2.5 py-1.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.06] text-sm" value="" onChange={e=>{if(e.target.value){onBulkStatus([...sel],e.target.value);clear();}}}><option value="">ตั้งสถานะ…</option>{STATUSES.map(s=><option key={s.id} value={s.id}>{s.label}</option>)}</select>
+      <button className="px-3 py-1.5 rounded-lg bg-red-500/15 text-red-500 text-sm font-semibold flex items-center gap-1" onClick={()=>{onBulkDelete([...sel]);clear();}}><Icon name="trash" className="w-4 h-4"/> ลบ {sel.size}</button>
+      <button className="px-3 py-1.5 rounded-lg bg-black/[0.05] dark:bg-white/[0.06] text-sm" onClick={clear}>ยกเลิก</button>
+    </div>}
+    <div className="space-y-2">
+      {list.map(({c,a})=>(<div key={c.id} className={"glass-soft p-3 flex items-center gap-3 "+(sel.has(c.id)?'ring-1 ring-gold':'')}>
+        <input type="checkbox" className="w-4 h-4 accent-gold shrink-0" checked={sel.has(c.id)} onChange={()=>toggle(c.id)}/>
+        <button className="flex-1 min-w-0 text-left" onClick={()=>onOpen(c.id)}>
+          <div className="font-semibold text-sm truncate">{c.name}{c.verify&&<span className="text-amber-500"> ⚠</span>}</div>
+          <div className="flex items-center gap-2 mt-1 flex-wrap text-[11px] text-slate-400">
+            <span className="px-1.5 py-0.5 rounded bg-black/[0.05] dark:bg-white/[0.06]">{c.business}</span>
+            {c.project_id&&<span className="text-violet">🗂 {projName(c.project_id)}</span>}
+            {c.members!=null&&<span>· {c.members} คน</span>}
+            <Days a={a}/>
+            {c.next_action&&<span className="text-slate-500 dark:text-slate-400">▶ {c.next_action}{c.next_action_date&&' · '+thDate(c.next_action_date)}</span>}
+          </div>
+        </button>
+        <select className="px-2 py-1.5 rounded-lg text-xs font-semibold shrink-0 max-w-[110px]" style={{background:stMeta(c.status).hex+'18',color:stMeta(c.status).hex,border:'1px solid '+stMeta(c.status).hex+'44'}} value={c.status} onChange={e=>onSetStatus(c.id,e.target.value)}>{STATUSES.map(s=><option key={s.id} value={s.id} style={{color:'#222'}}>{s.label}</option>)}</select>
+        <select className="px-2 py-1.5 rounded-lg text-xs bg-black/[0.04] dark:bg-white/[0.05] shrink-0 max-w-[96px] hidden sm:block" value={c.project_id||''} onChange={e=>handleProj(c.id,e.target.value)}><option value="">โปรเจกต์</option>{(data.projects||[]).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}<option value="__new">＋ ใหม่</option></select>
+        <button className="w-8 h-8 rounded-lg grid place-items-center bg-red-500/10 text-red-500 hover:bg-red-500/20 transition shrink-0" onClick={()=>onDelete(c.id)}><Icon name="trash" className="w-4 h-4"/></button>
+      </div>))}
+      {!list.length&&<div className="text-center py-10 text-slate-400 text-sm">ไม่พบลูกค้าตามเงื่อนไข</div>}
+    </div>
+  </div>;
+}
+
+/* ---------- Detail drawer ---------- */
+function Detail({c,a,data,onClose,onUpd,onDel,onAddProject,onLog}){
+  const [nm,setNm]=useState(c.name);
+  const [note,setNote]=useState('');const [chan,setChan]=useState('LINE');
+  const [na,setNa]=useState(c.next_action||'');const [nad,setNad]=useState(c.next_action_date||'');
+  const saveNote=()=>{if(!note.trim())return;onUpd(c.id,{notes:[{date:todayISO(),channel:chan,summary:note.trim(),by:'Toni'},...c.notes],last_contact_at:todayISO()});setNote('');};
+  const savePlan=()=>onUpd(c.id,{next_action:na.trim(),next_action_date:na.trim()?(nad||null):null});
+  const setStatus=s=>onUpd(c.id,s==='won'?{status:s,won_at:todayISO()}:{status:s});
+  const inp="w-full px-3 py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.05] text-sm focus:outline-none focus:ring-2 ring-gold/40";
+  const lbl="text-xs font-semibold text-slate-500 mt-3.5 mb-1 block";
+  return <div className="fixed inset-0 z-50 flex justify-end" onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+    <div className="relative w-full sm:max-w-md h-full overflow-auto bg-white dark:bg-ink-800 border-l border-black/10 dark:border-white/10 shadow-2xl">
+      <div className="sticky top-0 bg-white/90 dark:bg-ink-800/90 backdrop-blur px-5 py-4 border-b border-black/[0.06] dark:border-white/10 flex items-start gap-3 z-10">
+        <div className="flex-1 min-w-0">
+          <div className="font-display font-bold text-lg truncate">{c.name}</div>
+          <div className="flex items-center gap-2 mt-1 flex-wrap"><span className="text-[11px] px-1.5 py-0.5 rounded bg-black/[0.05] dark:bg-white/[0.06] text-slate-500">{c.business}</span><Pill status={c.status} sm/>{c.members!=null&&<span className="text-[11px] text-slate-400">{c.members} คน</span>}<Days a={a}/></div>
+        </div>
+        <button onClick={onClose} className="w-9 h-9 rounded-lg grid place-items-center bg-black/[0.05] dark:bg-white/[0.07] shrink-0"><Icon name="x"/></button>
+      </div>
+      <div className="px-5 pb-8">
+        {a.needFollow&&<button onClick={()=>{onLog(c.id);onClose();}} className="w-full mt-4 py-2.5 rounded-xl font-semibold text-white flex items-center justify-center gap-2" style={{background:'linear-gradient(135deg,#14B8A6,#0D9488)'}}><Icon name="check" className="w-5 h-5"/> ติดตามแล้ว (บันทึก + เคลียร์คิว)</button>}
+        <label className={lbl}>ชื่อกลุ่ม / ลูกค้า</label>
+        <input className={inp} value={nm} onChange={e=>setNm(e.target.value)} onBlur={()=>{const v=nm.trim();if(v&&v!==c.name)onUpd(c.id,{name:v});else if(!v)setNm(c.name);}}/>
+        <label className={lbl}>สถานะ</label>
+        <div className="flex flex-wrap gap-1.5">{STATUSES.map(s=><button key={s.id} onClick={()=>setStatus(s.id)} className="text-xs px-2.5 py-1 rounded-full font-semibold transition" style={c.status===s.id?{background:s.hex,color:'#fff'}:{background:s.hex+'18',color:s.hex,border:'1px solid '+s.hex+'44'}}>{s.label}</button>)}</div>
+        <label className={lbl}>Business / โปรเจกต์</label>
+        <div className="flex gap-2">
+          <select className={inp} value={c.business} onChange={e=>onUpd(c.id,{business:e.target.value})}>{data.businesses.map(b=><option key={b}>{b}</option>)}{!data.businesses.includes(c.business)&&<option>{c.business}</option>}</select>
+          <select className={inp} value={c.project_id||''} onChange={e=>{const v=e.target.value;if(v==='__new'){const n=prompt('ชื่อโปรเจกต์ใหม่');if(n&&n.trim())onAddProject(n.trim(),[c.id]);return;}onUpd(c.id,{project_id:v||null});}}><option value="">— โปรเจกต์ —</option>{(data.projects||[]).map(p=><option key={p.id} value={p.id}>{p.name}</option>)}<option value="__new">＋ ใหม่</option></select>
+        </div>
+        <div className="h-px bg-black/[0.07] dark:bg-white/10 my-4"></div>
+        <label className={lbl+' !mt-0'}>✍️ บันทึกโน้ต (คุยอะไรไป)</label>
+        <div className="flex gap-1.5 mb-1.5">{CHANNELS.map(ch=><button key={ch} onClick={()=>setChan(ch)} className={"text-xs px-2.5 py-1 rounded-full font-semibold "+(chan===ch?'bg-gold text-white':'bg-black/[0.05] dark:bg-white/[0.06] text-slate-500')}>{ch}</button>)}</div>
+        <textarea rows="2" className={inp} value={note} onChange={e=>setNote(e.target.value)} placeholder="เช่น เสนอ eSpring รอตอบกลับ"/>
+        <button onClick={saveNote} className="mt-2 px-4 py-2 rounded-xl text-sm font-semibold text-white" style={{background:'linear-gradient(135deg,#E6B84B,#9A7A2B)'}}>บันทึกโน้ต</button>
+        <label className={lbl}>🎯 แผนถัดไป</label>
+        <input className={inp} value={na} onChange={e=>setNa(e.target.value)} placeholder="ตามอะไรต่อ"/>
+        <div className="flex gap-2 mt-2 items-center"><input type="date" className={inp+' !w-auto'} value={nad||''} onChange={e=>setNad(e.target.value)}/><button onClick={savePlan} className="px-4 py-2 rounded-xl text-sm font-semibold bg-black/[0.06] dark:bg-white/[0.08]">ตั้งแผน</button></div>
+        <label className={lbl}>🕘 ประวัติ ({c.notes.length})</label>
+        {c.notes.length?<div className="space-y-2">{c.notes.map((n,i)=><div key={i} className="border-l-2 border-black/10 dark:border-white/15 pl-3 py-0.5"><div className="text-[11px] text-slate-400">{thDate(n.date)} · {n.channel}</div><div className="text-sm">{n.summary}</div></div>)}</div>:<div className="text-sm text-slate-400">ยังไม่มีโน้ต</div>}
+        <div className="h-px bg-black/[0.07] dark:bg-white/10 my-4"></div>
+        <button onClick={()=>{if(confirm('ลบลูกค้านี้?'))onDel(c.id);}} className="px-4 py-2 rounded-xl text-sm font-semibold bg-red-500/12 text-red-500 flex items-center gap-1.5"><Icon name="trash" className="w-4 h-4"/> ลบลูกค้า</button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ---------- Gate / Splash ---------- */
+function Gate({onSubmit}){const [p,setP]=useState('');
+  return <div className="min-h-screen grid place-items-center px-5">
+    <div className="glass p-8 w-full max-w-xs text-center">
+      <div className="w-11 h-11 rounded-xl mx-auto mb-4" style={{background:'linear-gradient(135deg,#E6B84B,#14B8A6,#7C5CFC)'}}></div>
+      <div className="font-display font-bold text-xl">EuneunCRM <span className="text-sm text-gold-deep dark:text-gold-soft">v2</span></div>
+      <p className="text-sm text-slate-400 mt-1 mb-4">ใส่ PIN เพื่อเข้าใช้</p>
+      <input type="password" autoFocus className="w-full px-3 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-center focus:outline-none focus:ring-2 ring-gold/40" placeholder="PIN" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')onSubmit(p.trim());}}/>
+      <button onClick={()=>onSubmit(p.trim())} className="w-full mt-3 py-2.5 rounded-xl font-semibold text-white" style={{background:'linear-gradient(135deg,#E6B84B,#9A7A2B)'}}>เข้าใช้งาน</button>
+    </div>
+  </div>;
+}
+function Splash(){return <div className="min-h-screen grid place-items-center"><div className="text-center"><div className="w-11 h-11 rounded-xl mx-auto mb-3 animate-pulse" style={{background:'linear-gradient(135deg,#E6B84B,#14B8A6,#7C5CFC)'}}></div><div className="text-slate-400 text-sm">กำลังโหลดจากคลาวด์…</div></div></div>;}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+<script>
+(function(){try{var src=document.getElementById('appsrc').textContent;
+  var code=Babel.transform(src,{presets:[['react',{runtime:'classic'}]]}).code;(0,eval)(code);
+}catch(e){document.getElementById('root').innerHTML='<pre style="padding:24px;color:#c0392b;white-space:pre-wrap;font-family:monospace">v2 โหลดไม่ได้: '+e.message+'</pre>';console.error(e);}})();
+</script>
+</body>
+</html>
