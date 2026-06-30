@@ -448,10 +448,13 @@ function Dashboard({analyzed,data,onOpen,onStatusClick}){
 }
 function KPI({n,k,cls}){return <div className={'kpi '+(cls||'')}><div className="n">{n}</div><div className="k">{k}</div></div>;}
 function Bar({label,v,max,color}){const pct=max?Math.round(v/max*100):0;return <div className="bar"><span style={{width:120,color:'var(--muted)'}}>{label}</span><span className="track"><span className="fill" style={{width:pct+'%',background:color}}></span></span><span className="v">{v}</span></div>;}
-function MiniRow({x,onOpen}){return <button className="crow" style={{padding:'9px 11px'}} onClick={()=>onOpen(x.c.id)}>
-  <div><div className="nm" style={{fontSize:'.92rem'}}>{x.c.name}</div>
-    <div className="meta"><span className="biz">{x.c.business}</span><Pill status={x.c.status}/></div></div>
-  <div className="right"><DaysFlag a={x.a}/>{x.c.next_action&&<span className="faint" style={{fontSize:'.74rem'}}>{x.c.next_action_date?thDate(x.c.next_action_date):'มีแผน'}</span>}</div>
+function MiniRow({x,onOpen}){const {c,a}=x;return <button className="crow" style={{padding:'9px 11px'}} onClick={()=>onOpen(c.id)}>
+  <div style={{minWidth:0}}>
+    <div className="nm" style={{fontSize:'.92rem'}}>{c.name}</div>
+    <div className="meta"><span className="biz">{c.business}</span><Pill status={c.status}/></div>
+    {c.next_action&&<div className="na">▶ <b>{c.next_action}</b>{c.next_action_date&&' · '+thDate(c.next_action_date)}</div>}
+  </div>
+  <div className="right"><DaysFlag a={a}/>{c.next_action&&!c.next_action_date&&<span className="faint" style={{fontSize:'.72rem'}}>มีแผน</span>}</div>
 </button>;}
 
 /* ---------- Customers ---------- */
@@ -536,15 +539,34 @@ function CustomerRow({x,projects,selected,onToggle,onOpen,onStatus,onProject,onD
 }
 
 /* ---------- Todo ---------- */
+function sortRows(arr,mode){
+  const c=[...arr];
+  const due=(a,b,d)=>{const x=a.c.next_action_date,y=b.c.next_action_date;if(!x&&!y)return 0;if(!x)return 1;if(!y)return -1;return d*(x<y?-1:x>y?1:0);};
+  const dv=v=>v==null?1e9:v;
+  if(mode==='due_asc')c.sort((a,b)=>due(a,b,1));
+  else if(mode==='due_desc')c.sort((a,b)=>due(a,b,-1));
+  else if(mode==='cold')c.sort((a,b)=>dv(b.a.days)-dv(a.a.days));
+  else if(mode==='recent')c.sort((a,b)=>{const x=a.c.last_contact_at||'',y=b.c.last_contact_at||'';return x<y?1:x>y?-1:0;});
+  else if(mode==='name')c.sort((a,b)=>a.c.name.localeCompare(b.c.name,'th'));
+  return c;
+}
+const TODO_SORTS=[['due_asc','วันกำหนด: ใกล้→ไกล'],['due_desc','วันกำหนด: ไกล→ใกล้'],['cold','หายไปนานสุด'],['recent','เพิ่งคุยล่าสุด'],['name','ชื่อ A→Z']];
 function Todo({analyzed,onOpen}){
+  const [sort,setSort]=useState('due_asc');
   const g={overdue:[],today:[],soon:[],'going-cold':[],'no-plan':[]};
   analyzed.forEach(x=>{if(g[x.a.bucket])g[x.a.bucket].push(x);});
   const sect=[['overdue','🔴 ค้าง (เลยกำหนด)'],['today','🟠 วันนี้'],['going-cold','🟡 ไม่ได้ตามนาน'],['soon','🔵 เร็วๆ นี้'],['no-plan','⚪ ยังไม่วางแผน']];
-  return <>{sect.map(([k,t])=><div className="panel" key={k} style={{marginBottom:12}}>
-    <h3>{t} <span className="faint" style={{fontWeight:400,fontSize:'.8rem'}}>({g[k].length})</span></h3>
-    {g[k].length?g[k].slice(0,30).map(x=><MiniRow key={x.c.id} x={x} onOpen={onOpen}/>):<div className="empty" style={{padding:14}}>—</div>}
-    {g[k].length>30&&<div className="faint" style={{fontSize:'.8rem',marginTop:6}}>+ อีก {g[k].length-30}</div>}
-  </div>)}</>;
+  return <>
+    <div className="filters" style={{marginBottom:12,alignItems:'center'}}>
+      <span className="faint" style={{fontSize:'.85rem'}}>เรียงตาม</span>
+      <select className="inp" value={sort} onChange={e=>setSort(e.target.value)}>{TODO_SORTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select>
+    </div>
+    {sect.map(([k,t])=>{const rows=sortRows(g[k],sort);return <div className="panel" key={k} style={{marginBottom:12}}>
+      <h3>{t} <span className="faint" style={{fontWeight:400,fontSize:'.8rem'}}>({rows.length})</span></h3>
+      {rows.length?rows.slice(0,30).map(x=><MiniRow key={x.c.id} x={x} onOpen={onOpen}/>):<div className="empty" style={{padding:14}}>—</div>}
+      {rows.length>30&&<div className="faint" style={{fontSize:'.8rem',marginTop:6}}>+ อีก {rows.length-30}</div>}
+    </div>;})}
+  </>;
 }
 
 /* ---------- Add ---------- */
